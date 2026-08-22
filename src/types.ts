@@ -10,6 +10,8 @@ export interface AuthUser {
   unitName?: string;
   avatarInitials?: string;
   jobTitle?: string;
+  photoUrl?: string;
+  authProvider?: 'google' | 'institutional';
 }
 
 export type UnitType = 
