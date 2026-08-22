@@ -70,24 +70,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#0F172A] text-slate-300 select-none">
       {/* Brand Header */}
-      <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-sm">
-              +
-            </div>
-            <h1 className="text-white font-bold text-xl tracking-tight">
-              NEPS <span className="text-blue-400">Saúde</span>
-            </h1>
+      <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-base shadow-sm shrink-0">
+            +
           </div>
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1.5 font-semibold">
-            Educação Permanente • SERMAC
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-white font-bold text-lg tracking-tight">
+                NEPS <span className="text-blue-400">SERMAC</span>
+              </h1>
+            </div>
+            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mt-0.5">
+              Educação Permanente • Recife
+            </p>
+          </div>
         </div>
         {mobileMenuOpen && (
           <button 
             onClick={() => setMobileMenuOpen(false)} 
-            className="text-slate-400 hover:text-white p-1 lg:hidden"
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 lg:hidden"
           >
             <X className="w-5 h-5" />
           </button>
@@ -291,31 +293,32 @@ export const Header: React.FC<HeaderProps> = ({
   const currentUnit = units.find(u => u.id === selectedUnitId) || units[0];
 
   return (
-    <header className="w-full h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0 shadow-xs z-30">
+    <header className="w-full min-h-[4.25rem] bg-white border-b border-slate-200 flex flex-wrap lg:flex-nowrap items-center justify-between px-4 sm:px-6 lg:px-8 py-2.5 shrink-0 shadow-xs z-30 gap-3">
       
       {/* Left Side: Mobile Menu Button + Screen Title */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
         <button 
           id="btn-mobile-menu-toggle"
           onClick={onOpenMobileMenu}
-          className="lg:hidden p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"
+          className="lg:hidden p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0"
           aria-label="Abrir menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">
+        <div className="min-w-0 py-0.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">
               {currentRole === 'SERMAC_CENTRAL' && 'Gestão Central - SERMAC • Visão Geral da Rede'}
               {currentRole === 'NEPS_UNIT' && `Núcleo NEPS - Unidade • ${currentUnit.name}`}
               {currentRole === 'PARTICIPANT' && 'Portal do Profissional de Saúde'}
             </h2>
-            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded uppercase tracking-wider hidden sm:inline-block">
+            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded uppercase tracking-wider inline-flex items-center gap-1 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
               Tempo Real
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 font-medium hidden md:block">
+          <p className="text-xs text-slate-500 font-normal mt-0.5 truncate hidden sm:block">
             {currentRole === 'SERMAC_CENTRAL' && 'Secretaria Municipal de Saúde • Gestão Integrada de Educação Permanente'}
             {currentRole === 'NEPS_UNIT' && `${currentUnit.type} - Distrito ${currentUnit.district} • Coordenador(a): ${currentUnit.coordinatorName}`}
             {currentRole === 'PARTICIPANT' && 'Registro rápido de presença, avaliação de reação e emissão de certificados'}
@@ -324,17 +327,17 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right Side: Filters, Unit Selector, Quick Role Switch & Logout */}
-      <div className="flex items-center gap-2.5 sm:gap-3 text-xs">
+      <div className="flex items-center gap-2 sm:gap-3 text-xs shrink-0 ml-auto">
         
         {/* Unit Selector when on NEPS mode */}
         {currentRole === 'NEPS_UNIT' && (
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
             <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             <select
               id="header-unit-selector"
               value={selectedUnitId}
               onChange={(e) => setSelectedUnitId(e.target.value)}
-              className="bg-transparent text-slate-800 text-xs font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent text-slate-800 text-xs font-semibold focus:outline-none cursor-pointer max-w-[150px] sm:max-w-[220px] truncate"
             >
               {units.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -345,17 +348,12 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Period Indicator */}
-        <div className="hidden xl:block bg-slate-100 px-3 py-1.5 rounded border border-slate-200 text-slate-600 font-medium">
-          Período: Outubro 2023
-        </div>
-
         {/* Role-Specific Action Button */}
         {currentRole === 'SERMAC_CENTRAL' && (
           <button
             id="btn-header-ai-diag"
             onClick={onOpenAiDiagnosis}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-1.5 rounded font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors shrink-0"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Diagnóstico IA</span>
@@ -366,19 +364,19 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-header-new-training"
             onClick={onOpenNewAction}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Novo Treinamento</span>
+            <span className="hidden sm:inline">Novo Treinamento</span>
           </button>
         )}
 
-        {/* Role Quick Toggle - Visible on ALL screen sizes */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600">
+        {/* Role Quick Toggle */}
+        <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 shrink-0">
           <button 
             id="top-nav-role-sermac"
             onClick={() => setCurrentRole('SERMAC_CENTRAL')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all ${
               currentRole === 'SERMAC_CENTRAL' 
                 ? 'bg-blue-600 text-white shadow-xs font-bold' 
                 : 'hover:text-slate-900 hover:bg-slate-200/60'
@@ -386,14 +384,14 @@ export const Header: React.FC<HeaderProps> = ({
             title="Gestão Central - SERMAC"
           >
             <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Gestão Central - SERMAC</span>
-            <span className="inline sm:hidden">Central</span>
+            <span className="hidden md:inline">Gestão Central</span>
+            <span className="inline md:hidden">Central</span>
           </button>
 
           <button 
             id="top-nav-role-neps"
             onClick={() => setCurrentRole('NEPS_UNIT')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all ${
               currentRole === 'NEPS_UNIT' 
                 ? 'bg-blue-600 text-white shadow-xs font-bold' 
                 : 'hover:text-slate-900 hover:bg-slate-200/60'
@@ -401,23 +399,23 @@ export const Header: React.FC<HeaderProps> = ({
             title="Núcleo NEPS - Unidade"
           >
             <Building className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Núcleo NEPS - Unidade</span>
-            <span className="inline sm:hidden">NEPS</span>
+            <span className="hidden md:inline">Núcleo NEPS</span>
+            <span className="inline md:hidden">NEPS</span>
           </button>
 
           <button 
             id="top-nav-role-participant"
             onClick={() => setCurrentRole('PARTICIPANT')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all ${
               currentRole === 'PARTICIPANT' 
                 ? 'bg-blue-600 text-white shadow-xs font-bold' 
                 : 'hover:text-slate-900 hover:bg-slate-200/60'
             }`}
-            title="Portal do Participante (Auto-Check-in)"
+            title="Portal do Participante"
           >
             <UserCheck className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Participante</span>
-            <span className="inline sm:hidden">Aluno</span>
+            <span className="hidden md:inline">Participante</span>
+            <span className="inline md:hidden">Aluno</span>
           </button>
         </div>
 
@@ -425,11 +423,11 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="header-btn-switch-user"
           onClick={onLogout}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors"
-          title="Trocar Perfil de Usuário ou Sair"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shrink-0"
+          title="Sair ou trocar conta"
         >
           <LogOut className="w-3.5 h-3.5 text-slate-500" />
-          <span className="hidden lg:inline">Sair</span>
+          <span className="hidden sm:inline">Sair</span>
         </button>
 
       </div>
