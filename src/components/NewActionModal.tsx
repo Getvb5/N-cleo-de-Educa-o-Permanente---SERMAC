@@ -59,6 +59,10 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
   const [timeSchedule, setTimeSchedule] = useState('08:30 às 12:30');
   const [location, setLocation] = useState('Auditório da Unidade');
   const [maxSeats, setMaxSeats] = useState(30);
+  const [plannedAttendeesCount, setPlannedAttendeesCount] = useState(30);
+  const [eligibleProfessionalsCount, setEligibleProfessionalsCount] = useState(35);
+  const [isEsrLinked, setIsEsrLinked] = useState(false);
+  const [esrLinkType, setEsrLinkType] = useState('Parceria Pedagógica ESR');
 
   // AI Generation State
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
@@ -189,6 +193,10 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
       enrolledCount: 0,
       attendedCount: 0,
       satisfactionAverage: 0,
+      plannedAttendeesCount: Number(plannedAttendeesCount) || Number(maxSeats) || 30,
+      eligibleProfessionalsCount: Number(eligibleProfessionalsCount) || 35,
+      isEsrLinked: Boolean(isEsrLinked),
+      esrLinkType: isEsrLinked ? esrLinkType : undefined,
       syllabus: syllabus.length > 0 ? syllabus : [
         'Módulo 1: Fundamentação Teórica e Protocolos SUS',
         'Módulo 2: Estudo de Casos e Dinâmica Prática',
@@ -539,6 +547,87 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
                   className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Section 5: Indicator Metas & ESR Linkage */}
+          <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  5. Planejamento de Indicadores & Vinculação à Escola de Saúde do Recife (ESR)
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Parâmetros para cálculo automático do Coeficiente de Assiduidade e Taxa de Adesão
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1 text-xs">
+                  Profissionais Previstos para este Tema (Denominador Indicador 3)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={plannedAttendeesCount}
+                  onChange={(e) => setPlannedAttendeesCount(Number(e.target.value))}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                  placeholder="Ex: 30"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1 text-xs">
+                  Total de Profissionais Elegíveis na Categoria (Indicador 4)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={eligibleProfessionalsCount}
+                  onChange={(e) => setEligibleProfessionalsCount(Number(e.target.value))}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                  placeholder="Ex: 35"
+                />
+              </div>
+            </div>
+
+            {/* ESR Checkbox */}
+            <div className="p-3 bg-white border border-slate-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <label className="flex items-center space-x-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isEsrLinked}
+                  onChange={(e) => setIsEsrLinked(e.target.checked)}
+                  className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                />
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">
+                    Vincular esta ação à Escola de Saúde do Recife (ESR)
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    Alimenta o Indicador 6 (Percentual de Treinamentos Vinculados à ESR)
+                  </span>
+                </div>
+              </label>
+
+              {isEsrLinked && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-600 font-medium">Tipo:</span>
+                  <select
+                    value={esrLinkType}
+                    onChange={(e) => setEsrLinkType(e.target.value)}
+                    className="bg-slate-50 border border-purple-200 text-xs rounded-md px-2.5 py-1.5 text-purple-950 font-semibold focus:outline-none"
+                  >
+                    <option value="Parceria Pedagógica ESR">Parceria Pedagógica ESR</option>
+                    <option value="Certificação Oficial ESR">Certificação Oficial ESR</option>
+                    <option value="Instrutoria Compartilhada">Instrutoria Compartilhada</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 

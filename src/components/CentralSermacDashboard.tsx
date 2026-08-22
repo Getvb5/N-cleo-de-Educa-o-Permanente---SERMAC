@@ -4,10 +4,12 @@ import {
   TrainingAction, 
   AttendanceRecord, 
   TrainingNeedDNC,
+  UnitStaffCensus,
   ProfessionalCategory,
   InstructorCategory,
   ThematicAxis 
 } from '../types';
+import { OfficialIndicatorsPanel } from './OfficialIndicatorsPanel';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -48,7 +50,8 @@ import {
   TrendingUp,
   UserCheck,
   Building,
-  Check
+  Check,
+  Target
 } from 'lucide-react';
 
 interface CentralSermacDashboardProps {
@@ -56,10 +59,12 @@ interface CentralSermacDashboardProps {
   actions: TrainingAction[];
   attendance: AttendanceRecord[];
   dncList: TrainingNeedDNC[];
+  censusList?: UnitStaffCensus[];
   onOpenAiDiagnosis: () => void;
   onOpenPaepsPlan: () => void;
   onSelectAction: (action: TrainingAction) => void;
   onUpdateDncStatus: (id: string, status: TrainingNeedDNC['status']) => void;
+  onOpenCensusModal?: (unit: HealthUnit) => void;
 }
 
 const COLORS = ['#3b82f6', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#0ea5e9', '#14b8a6', '#f97316'];
@@ -69,12 +74,14 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
   actions = [],
   attendance = [],
   dncList = [],
+  censusList = [],
   onOpenAiDiagnosis,
   onOpenPaepsPlan,
   onSelectAction,
-  onUpdateDncStatus
+  onUpdateDncStatus,
+  onOpenCensusModal
 }) => {
-  const [activeTab, setActiveTab] = useState<'indicadores' | 'quem_treina_quem' | 'unidades' | 'dnc' | 'acoes'>('indicadores');
+  const [activeTab, setActiveTab] = useState<'indicadores_oficiais' | 'indicadores' | 'quem_treina_quem' | 'unidades' | 'dnc' | 'acoes'>('indicadores_oficiais');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Consolidated Key Indicators
@@ -279,6 +286,18 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
       {/* TABS NAVIGATION */}
       <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-xs text-xs font-semibold flex items-center gap-1 overflow-x-auto">
         <button
+          onClick={() => setActiveTab('indicadores_oficiais')}
+          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
+            activeTab === 'indicadores_oficiais'
+              ? 'bg-teal-600 text-white font-semibold shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <Target className="w-3.5 h-3.5" />
+          <span>Indicadores Oficiais SERMAC / NEPS</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('indicadores')}
           className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
             activeTab === 'indicadores'
@@ -287,7 +306,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
           }`}
         >
           <TrendingUp className="w-3.5 h-3.5" />
-          <span>Dashboard Geral</span>
+          <span>Visão Operacional Geral</span>
         </button>
 
         <button
@@ -356,6 +375,17 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* 0. OFFICIAL INDICATORS PANEL (SERMAC / NEPS) */}
+      {activeTab === 'indicadores_oficiais' && (
+        <OfficialIndicatorsPanel
+          units={units}
+          actions={actions}
+          attendance={attendance}
+          censusList={censusList}
+          onOpenCensusModal={onOpenCensusModal}
+        />
+      )}
 
       {/* 1. INDICATORS / DASHBOARD GERAL */}
       {activeTab === 'indicadores' && (

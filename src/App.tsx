@@ -5,17 +5,21 @@ import {
   TrainingAction, 
   AttendanceRecord, 
   TrainingNeedDNC,
+  UnitStaffCensus,
   FeedbackData,
   AuthUser 
 } from './types';
 import { 
   getStoredHealthUnits, 
+  saveStoredUnits,
   getStoredTrainingActions, 
   saveStoredTrainingActions,
   getStoredAttendance, 
   saveStoredAttendance,
   getStoredDNC,
   saveStoredDNC,
+  loadStoredCensus,
+  saveStoredCensus,
   loadStoredUser,
   saveStoredUser,
   DEFAULT_SERMAC_USER,
@@ -31,6 +35,8 @@ import { TrainingDetailsModal } from './components/TrainingDetailsModal';
 import { CertificateModal } from './components/CertificateModal';
 import { AiDiagnosisModal } from './components/AiDiagnosisModal';
 import { PaepsPlanModal } from './components/PaepsPlanModal';
+import { WorkforceCensusModal } from './components/WorkforceCensusModal';
+import { CancelActionModal } from './components/CancelActionModal';
 import { AuthScreen } from './components/AuthScreen';
 
 export default function App() {
@@ -39,13 +45,14 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => currentUser !== null);
   const [currentRole, setCurrentRole] = useState<UserRole>(() => currentUser?.role || 'SERMAC_CENTRAL');
   
-  const [units] = useState<HealthUnit[]>(getStoredHealthUnits());
+  const [units, setUnits] = useState<HealthUnit[]>(() => getStoredHealthUnits());
   const [selectedUnitId, setSelectedUnitId] = useState<string>(() => currentUser?.unitId || units[0]?.id || 'unit-1');
 
   // Core Data State
   const [actions, setActions] = useState<TrainingAction[]>(() => getStoredTrainingActions());
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => getStoredAttendance());
   const [dncList, setDncList] = useState<TrainingNeedDNC[]>(() => getStoredDNC());
+  const [censusList, setCensusList] = useState<UnitStaffCensus[]>(() => loadStoredCensus());
 
   // Modal States
   const [isNewActionOpen, setIsNewActionOpen] = useState(false);
@@ -53,6 +60,8 @@ export default function App() {
   const [isPaepsPlanOpen, setIsPaepsPlanOpen] = useState(false);
   const [selectedActionDetails, setSelectedActionDetails] = useState<TrainingAction | null>(null);
   const [selectedCertificateRecord, setSelectedCertificateRecord] = useState<AttendanceRecord | null>(null);
+  const [selectedCensusUnit, setSelectedCensusUnit] = useState<HealthUnit | null>(null);
+  const [selectedActionToCancel, setSelectedActionToCancel] = useState<TrainingAction | null>(null);
 
   // Sync to LocalStorage on changes
   useEffect(() => {
@@ -66,6 +75,14 @@ export default function App() {
   useEffect(() => {
     saveStoredDNC(dncList);
   }, [dncList]);
+
+  useEffect(() => {
+    saveStoredCensus(censusList);
+  }, [censusList]);
+
+  useEffect(() => {
+    saveStoredUnits(units);
+  }, [units]);
 
   useEffect(() => {
     if (currentUser) {
@@ -123,6 +140,62 @@ export default function App() {
     if (selectedActionDetails && selectedActionDetails.id === actionId) {
       setSelectedActionDetails(prev => prev ? { ...prev, status: newStatus } : null);
     }
+  };
+
+  const handleConfirmCancelAction = (
+    actionId: string, 
+    reason: string, 
+    category: 'Logística / Local' | 'Instrutor Indisponível' | 'Emergência Epidemiológica' | 'Baixa Adesão Prévia' | 'Outro'
+  ) => {
+    setActions(prev => prev.map(a => {
+      if (a.id === actionId) {
+        return {
+          ...a,
+          status: 'cancelada',
+          cancellationReason: reason,
+          cancellationCategory: category,
+          cancellationDate: new Date().toISOString().split('T')[0]
+        };
+      }
+      return a;
+    }));
+    setSelectedActionToCancel(null);
+    if (selectedActionDetails && selectedActionDetails.id === actionId) {
+      setSelectedActionDetails(prev => prev ? { 
+        ...prev, 
+        status: 'cancelada',
+        cancellationReason: reason,
+        cancellationCategory: category,
+        cancellationDate: new Date().toISOString().split('T')[0]
+      } : null);
+    }
+  };
+
+  const handleSaveCensus = (newCensus: UnitStaffCensus) => {
+    // Update or add census
+    setCensusList(prev => {
+      const idx = prev.findIndex(c => c.unitId === newCensus.unitId);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = newCensus;
+        return next;
+      }
+      return [...prev, newCensus];
+    });
+
+    // Also update health unit totalStaff and activeStaffBreakdown
+    setUnits(prev => prev.map(u => {
+      if (u.id === newCensus.unitId) {
+        return {
+          ...u,
+          totalStaff: newCensus.totalActiveStaff,
+          activeStaffBreakdown: newCensus.breakdown
+        };
+      }
+      return u;
+    }));
+
+    setSelectedCensusUnit(null);
   };
 
   const handleAddAttendance = (recordData: Omit<AttendanceRecord, 'id' | 'certificateCode'>) => {
@@ -223,10 +296,12 @@ export default function App() {
               actions={actions}
               attendance={attendance}
               dncList={dncList}
+              censusList={censusList}
               onOpenAiDiagnosis={() => setIsAiDiagnosisOpen(true)}
               onOpenPaepsPlan={() => setIsPaepsPlanOpen(true)}
               onSelectAction={(action) => setSelectedActionDetails(action)}
               onUpdateDncStatus={handleUpdateDncStatus}
+              onOpenCensusModal={(unit) => setSelectedCensusUnit(unit)}
             />
           )}
 
@@ -236,10 +311,13 @@ export default function App() {
               actions={actions}
               attendance={attendance}
               dncList={dncList}
+              censusList={censusList}
               onOpenNewAction={() => setIsNewActionOpen(true)}
               onSelectAction={(action) => setSelectedActionDetails(action)}
               onOpenCertificate={(record) => setSelectedCertificateRecord(record)}
               onSubmitDNC={handleSubmitDNC}
+              onOpenCensusModal={(unit) => setSelectedCensusUnit(unit)}
+              onOpenCancelModal={(action) => setSelectedActionToCancel(action)}
             />
           )}
 
@@ -314,6 +392,23 @@ export default function App() {
           actions={actions}
           dncList={dncList}
           onClose={() => setIsPaepsPlanOpen(false)}
+        />
+      )}
+
+      {selectedCensusUnit && (
+        <WorkforceCensusModal
+          unit={selectedCensusUnit}
+          currentCensus={censusList.find(c => c.unitId === selectedCensusUnit.id)}
+          onClose={() => setSelectedCensusUnit(null)}
+          onSaveCensus={handleSaveCensus}
+        />
+      )}
+
+      {selectedActionToCancel && (
+        <CancelActionModal
+          action={selectedActionToCancel}
+          onClose={() => setSelectedActionToCancel(null)}
+          onConfirmCancel={handleConfirmCancelAction}
         />
       )}
 

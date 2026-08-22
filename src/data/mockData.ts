@@ -3,6 +3,7 @@ import {
   TrainingAction, 
   AttendanceRecord, 
   TrainingNeedDNC,
+  UnitStaffCensus,
   ProfessionalCategory,
   InstructorCategory,
   ThematicAxis,
@@ -20,7 +21,25 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário II',
     coordinatorName: 'Enf. Carla Albuquerque (Coord. NEPS)',
     coordinatorEmail: 'neps.us159@saude.recife.pe.gov.br',
-    totalStaff: 85
+    totalStaff: 85,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 12,
+      'Médico(a) Especialista / Emergencista': 8,
+      'Enfermeiro(a)': 14,
+      'Técnico(a) de Enfermagem': 22,
+      'Auxiliar de Enfermagem': 4,
+      'Agente Comunitário de Saúde (ACS)': 6,
+      'Agente de Combate a Endemias (ACE)': 3,
+      'Psicólogo(a)': 2,
+      'Fisioterapeuta': 2,
+      'Assistente Social': 2,
+      'Farmacêutico(a)': 2,
+      'Recepcionista / Atendimento': 4,
+      'Agente Administrativo / Faturamento': 2,
+      'Higienização e Apoio Operacional': 2
+    }
   },
   {
     id: 'unit-163',
@@ -30,7 +49,22 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário III',
     coordinatorName: 'Dra. Beatriz Menezes (Coord. NEPS)',
     coordinatorEmail: 'neps.us163@saude.recife.pe.gov.br',
-    totalStaff: 140
+    totalStaff: 140,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) Especialista / Emergencista': 26,
+      'Enfermeiro(a)': 28,
+      'Técnico(a) de Enfermagem': 46,
+      'Auxiliar de Enfermagem': 8,
+      'Fisioterapeuta': 6,
+      'Psicólogo(a)': 3,
+      'Assistente Social': 4,
+      'Farmacêutico(a)': 3,
+      'Nutricionista': 2,
+      'Recepcionista / Atendimento': 6,
+      'Higienização e Apoio Operacional': 8
+    }
   },
   {
     id: 'unit-169',
@@ -40,7 +74,21 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário III',
     coordinatorName: 'Enf. Rodrigo Cavalcanti (Coord. NEPS)',
     coordinatorEmail: 'neps.us169@saude.recife.pe.gov.br',
-    totalStaff: 95
+    totalStaff: 95,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 14,
+      'Médico(a) Especialista / Emergencista': 10,
+      'Enfermeiro(a)': 16,
+      'Técnico(a) de Enfermagem': 24,
+      'Cirurgião(ã)-Dentista': 4,
+      'Técnico/Auxiliar de Saúde Bucal': 4,
+      'Farmacêutico(a)': 2,
+      'Recepcionista / Atendimento': 6,
+      'Agente Administrativo / Faturamento': 5,
+      'Higienização e Apoio Operacional': 10
+    }
   },
   {
     id: 'unit-164',
@@ -50,7 +98,18 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário II',
     coordinatorName: 'Dr. Thiago Vasconcelos (Coord. NEPS)',
     coordinatorEmail: 'neps.us164@saude.recife.pe.gov.br',
-    totalStaff: 70
+    totalStaff: 70,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) Especialista / Emergencista': 16,
+      'Enfermeiro(a)': 14,
+      'Técnico(a) de Enfermagem': 22,
+      'Recepcionista / Atendimento': 6,
+      'Higienização e Apoio Operacional': 8,
+      'Assistente Social': 2,
+      'Farmacêutico(a)': 2
+    }
   },
   {
     id: 'unit-165',
@@ -60,7 +119,20 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário V',
     coordinatorName: 'Dra. Gabriela Fontes (Coord. NEPS)',
     coordinatorEmail: 'neps.us165@saude.recife.pe.gov.br',
-    totalStaff: 160
+    totalStaff: 160,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) Especialista / Emergencista': 32,
+      'Enfermeiro(a)': 30,
+      'Técnico(a) de Enfermagem': 58,
+      'Auxiliar de Enfermagem': 10,
+      'Psicólogo(a)': 4,
+      'Assistente Social': 4,
+      'Nutricionista': 3,
+      'Recepcionista / Atendimento': 8,
+      'Higienização e Apoio Operacional': 11
+    }
   },
   {
     id: 'unit-153',
@@ -70,7 +142,19 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário VI',
     coordinatorName: 'Enf. Luciana Valença (Coord. NEPS)',
     coordinatorEmail: 'neps.us153@saude.recife.pe.gov.br',
-    totalStaff: 175
+    totalStaff: 175,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) Especialista / Emergencista': 36,
+      'Enfermeiro(a)': 32,
+      'Técnico(a) de Enfermagem': 62,
+      'Auxiliar de Enfermagem': 12,
+      'Psicólogo(a)': 4,
+      'Assistente Social': 5,
+      'Recepcionista / Atendimento': 10,
+      'Higienização e Apoio Operacional': 14
+    }
   },
   {
     id: 'unit-167',
@@ -80,7 +164,19 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário II',
     coordinatorName: 'Profa. Mariana Siqueira (Coord. NEPS)',
     coordinatorEmail: 'neps.us167@saude.recife.pe.gov.br',
-    totalStaff: 180
+    totalStaff: 180,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) Especialista / Emergencista': 38,
+      'Enfermeiro(a)': 35,
+      'Técnico(a) de Enfermagem': 65,
+      'Auxiliar de Enfermagem': 10,
+      'Psicólogo(a)': 4,
+      'Assistente Social': 6,
+      'Recepcionista / Atendimento': 8,
+      'Higienização e Apoio Operacional': 14
+    }
   },
   {
     id: 'unit-144',
@@ -90,7 +186,18 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário IV',
     coordinatorName: 'Farm. Carlos Eduardo Rocha (Coord. NEPS)',
     coordinatorEmail: 'neps.us144@saude.recife.pe.gov.br',
-    totalStaff: 80
+    totalStaff: 80,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 12,
+      'Médico(a) Especialista / Emergencista': 8,
+      'Enfermeiro(a)': 14,
+      'Técnico(a) de Enfermagem': 22,
+      'Farmacêutico(a)': 4,
+      'Recepcionista / Atendimento': 6,
+      'Higienização e Apoio Operacional': 14
+    }
   },
   {
     id: 'unit-162',
@@ -100,7 +207,18 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário III',
     coordinatorName: 'Enf. Patrícia Lima (Coord. NEPS)',
     coordinatorEmail: 'neps.us162@saude.recife.pe.gov.br',
-    totalStaff: 88
+    totalStaff: 88,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 14,
+      'Médico(a) Especialista / Emergencista': 10,
+      'Enfermeiro(a)': 16,
+      'Técnico(a) de Enfermagem': 24,
+      'Fisioterapeuta': 4,
+      'Recepcionista / Atendimento': 6,
+      'Higienização e Apoio Operacional': 14
+    }
   },
   {
     id: 'unit-166',
@@ -110,7 +228,18 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário I',
     coordinatorName: 'Dr. Lucas Silveira (Coord. NEPS)',
     coordinatorEmail: 'neps.us166@saude.recife.pe.gov.br',
-    totalStaff: 92
+    totalStaff: 92,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 14,
+      'Médico(a) Especialista / Emergencista': 12,
+      'Enfermeiro(a)': 16,
+      'Técnico(a) de Enfermagem': 26,
+      'Psicólogo(a)': 4,
+      'Recepcionista / Atendimento': 6,
+      'Higienização e Apoio Operacional': 14
+    }
   },
   {
     id: 'unit-128',
@@ -120,7 +249,17 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário IV',
     coordinatorName: 'Enf. Marcela Queiroz (Coord. NEPS)',
     coordinatorEmail: 'neps.us128@saude.recife.pe.gov.br',
-    totalStaff: 85
+    totalStaff: 85,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 12,
+      'Médico(a) Especialista / Emergencista': 10,
+      'Enfermeiro(a)': 15,
+      'Técnico(a) de Enfermagem': 24,
+      'Recepcionista / Atendimento': 8,
+      'Higienização e Apoio Operacional': 16
+    }
   },
   {
     id: 'unit-160',
@@ -130,7 +269,17 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário I',
     coordinatorName: 'Dra. Fernanda Vasconcelos (Coord. NEPS)',
     coordinatorEmail: 'neps.us160@saude.recife.pe.gov.br',
-    totalStaff: 78
+    totalStaff: 78,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 12,
+      'Médico(a) Especialista / Emergencista': 8,
+      'Enfermeiro(a)': 14,
+      'Técnico(a) de Enfermagem': 22,
+      'Recepcionista / Atendimento': 8,
+      'Higienização e Apoio Operacional': 14
+    }
   },
   {
     id: 'unit-376',
@@ -140,7 +289,17 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário II',
     coordinatorName: 'Enf. Andréia Lins (Coord. NEPS)',
     coordinatorEmail: 'neps.us376@saude.recife.pe.gov.br',
-    totalStaff: 82
+    totalStaff: 82,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 12,
+      'Médico(a) Especialista / Emergencista': 10,
+      'Enfermeiro(a)': 14,
+      'Técnico(a) de Enfermagem': 24,
+      'Recepcionista / Atendimento': 8,
+      'Higienização e Apoio Operacional': 14
+    }
   },
   {
     id: 'unit-321',
@@ -150,7 +309,16 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário I',
     coordinatorName: 'Dra. Camila Nogueira (Coord. NEPS)',
     coordinatorEmail: 'neps.us321@saude.recife.pe.gov.br',
-    totalStaff: 45
+    totalStaff: 45,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) Especialista / Emergencista': 12,
+      'Enfermeiro(a)': 8,
+      'Técnico(a) de Enfermagem': 12,
+      'Recepcionista / Atendimento': 5,
+      'Higienização e Apoio Operacional': 8
+    }
   },
   {
     id: 'unit-293',
@@ -160,7 +328,17 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário VI',
     coordinatorName: 'Enf. Juliana Ramos (Coord. NEPS)',
     coordinatorEmail: 'neps.us293@saude.recife.pe.gov.br',
-    totalStaff: 75
+    totalStaff: 75,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 12,
+      'Médico(a) Especialista / Emergencista': 8,
+      'Enfermeiro(a)': 14,
+      'Técnico(a) de Enfermagem': 22,
+      'Recepcionista / Atendimento': 6,
+      'Higienização e Apoio Operacional': 13
+    }
   },
   {
     id: 'unit-101',
@@ -170,7 +348,17 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário I',
     coordinatorName: 'Enf. Sérgio Meirelles (Coord. NEPS)',
     coordinatorEmail: 'neps.us101@saude.recife.pe.gov.br',
-    totalStaff: 90
+    totalStaff: 90,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) da Família / Clínico': 14,
+      'Médico(a) Especialista / Emergencista': 10,
+      'Enfermeiro(a)': 16,
+      'Técnico(a) de Enfermagem': 26,
+      'Recepcionista / Atendimento': 8,
+      'Higienização e Apoio Operacional': 16
+    }
   },
   {
     id: 'unit-217',
@@ -180,7 +368,18 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário III',
     coordinatorName: 'Dr. Maurício Brandão (Coord. NEPS)',
     coordinatorEmail: 'neps.us217@saude.recife.pe.gov.br',
-    totalStaff: 115
+    totalStaff: 115,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) Especialista / Emergencista': 28,
+      'Enfermeiro(a)': 22,
+      'Técnico(a) de Enfermagem': 36,
+      'Fisioterapeuta': 6,
+      'Psicólogo(a)': 4,
+      'Recepcionista / Atendimento': 7,
+      'Higienização e Apoio Operacional': 12
+    }
   },
   {
     id: 'unit-180',
@@ -190,7 +389,17 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Central Metropolitano',
     coordinatorName: 'Enf. Bruno Esteves (Coord. NEPS)',
     coordinatorEmail: 'neps.us180@saude.recife.pe.gov.br',
-    totalStaff: 130
+    totalStaff: 130,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Médico(a) Especialista / Emergencista': 30,
+      'Enfermeiro(a)': 25,
+      'Técnico(a) de Enfermagem': 30,
+      'Condutor de Ambulância / Transporte': 30,
+      'Recepcionista / Atendimento': 10,
+      'Higienização e Apoio Operacional': 5
+    }
   },
   {
     id: 'unit-143',
@@ -200,7 +409,16 @@ export const INITIAL_HEALTH_UNITS: HealthUnit[] = [
     district: 'Distrito Sanitário IV',
     coordinatorName: 'Bioméd. Vanessa Holanda (Coord. NEPS)',
     coordinatorEmail: 'neps.us143@saude.recife.pe.gov.br',
-    totalStaff: 60
+    totalStaff: 60,
+    censusStatus: 'atualizado',
+    lastCensusDate: '2026-08-01',
+    activeStaffBreakdown: {
+      'Farmacêutico(a)': 12,
+      'Técnico(a) de Enfermagem': 18,
+      'Auxiliar de Enfermagem': 10,
+      'Recepcionista / Atendimento': 8,
+      'Higienização e Apoio Operacional': 12
+    }
   }
 ];
 
@@ -583,7 +801,101 @@ export const INITIAL_TRAINING_ACTIONS: TrainingAction[] = [
     ],
     materialsNeeded: ['Kits de punção venosa didáticos', 'Tubos a vácuo para treino', 'Cartilhas de biossegurança'],
     createdAt: '2026-08-16',
-    createdBy: 'Bioméd. Vanessa Holanda'
+    createdBy: 'Bioméd. Vanessa Holanda',
+    plannedAttendeesCount: 25,
+    eligibleProfessionalsCount: 30,
+    isEsrLinked: true,
+    esrLinkType: 'Certificação Oficial ESR'
+  },
+  {
+    id: 'act-8',
+    code: 'EPS-2026-008',
+    title: 'Manejo Inicial de Intoxicações Exógenas e Acidentes por Animais Peçonhentos',
+    thematicAxis: 'Urgência, Emergência e Suporte à Vida',
+    description: 'Oficina de identificação e conduta rápida em acidentes escorpiônicos e ofídicos na atenção básica.',
+    unitId: 'unit-159',
+    unitName: 'US 159 Policlínica Agamenon Magalhães',
+    instructorName: 'Dr. Fernando Arcoverde (Toxicologista)',
+    instructorCategory: 'Médico(a) Preceptor / Especialista',
+    instructorAffiliation: 'Ceatox / SES-PE',
+    targetCategories: [
+      'Médico(a) da Família / Clínico',
+      'Enfermeiro(a)',
+      'Técnico(a) de Enfermagem'
+    ],
+    modality: 'Presencial',
+    methodology: 'Estudo de Casos Clínicos Interprofissionais',
+    workloadHours: 4,
+    dateStart: '2026-08-20',
+    dateEnd: '2026-08-20',
+    timeSchedule: '14:00 às 18:00',
+    location: 'Auditório da Policlínica Agamenon Magalhães',
+    maxSeats: 30,
+    status: 'cancelada',
+    cancellationReason: 'Alteração emergencial na escala de plantão devido a surto sazonal de síndromes respiratórias',
+    cancellationCategory: 'Escala de Plantão/Remanejamento',
+    cancelledAt: '2026-08-19T14:30:00Z',
+    checkinPin: '9912',
+    enrolledCount: 15,
+    attendedCount: 0,
+    satisfactionAverage: 0,
+    plannedAttendeesCount: 30,
+    eligibleProfessionalsCount: 35,
+    isEsrLinked: false,
+    createdAt: '2026-08-05',
+    createdBy: 'Enf. Carla Albuquerque'
+  }
+];
+
+export const INITIAL_STAFF_CENSUS: UnitStaffCensus[] = [
+  {
+    id: 'census-159-2026-08',
+    unitId: 'unit-159',
+    unitName: 'US 159 Policlínica Agamenon Magalhães',
+    period: 'Agosto/2026',
+    totalActiveStaff: 85,
+    breakdown: {
+      'Médico(a) da Família / Clínico': 12,
+      'Médico(a) Especialista / Emergencista': 8,
+      'Enfermeiro(a)': 14,
+      'Técnico(a) de Enfermagem': 22,
+      'Auxiliar de Enfermagem': 4,
+      'Agente Comunitário de Saúde (ACS)': 6,
+      'Agente de Combate a Endemias (ACE)': 3,
+      'Psicólogo(a)': 2,
+      'Fisioterapeuta': 2,
+      'Assistente Social': 2,
+      'Farmacêutico(a)': 2,
+      'Recepcionista / Atendimento': 4,
+      'Agente Administrativo / Faturamento': 2,
+      'Higienização e Apoio Operacional': 2
+    },
+    notes: 'Quadro homologado com base na folha de pagamento de julho/2026 e escala de plantão.',
+    submittedBy: 'Enf. Carla Albuquerque',
+    submittedAt: '2026-08-01T10:00:00Z',
+    verifiedBySermac: true
+  },
+  {
+    id: 'census-165-2026-08',
+    unitId: 'unit-165',
+    unitName: 'US 165 Maternidade Bandeira Filho',
+    period: 'Agosto/2026',
+    totalActiveStaff: 160,
+    breakdown: {
+      'Médico(a) Especialista / Emergencista': 32,
+      'Enfermeiro(a)': 30,
+      'Técnico(a) de Enfermagem': 58,
+      'Auxiliar de Enfermagem': 10,
+      'Psicólogo(a)': 4,
+      'Assistente Social': 4,
+      'Nutricionista': 3,
+      'Recepcionista / Atendimento': 8,
+      'Higienização e Apoio Operacional': 11
+    },
+    notes: 'Censo atualizado pela coordenação de enfermagem e RH local.',
+    submittedBy: 'Dra. Gabriela Fontes',
+    submittedAt: '2026-08-02T14:30:00Z',
+    verifiedBySermac: true
   }
 ];
 
@@ -882,8 +1194,30 @@ const STORAGE_KEYS = {
   ACTIONS: 'sermac_eps_actions_recife_v2',
   ATTENDANCE: 'sermac_eps_attendance_recife_v2',
   DNC: 'sermac_eps_dnc_recife_v2',
+  CENSUS: 'sermac_eps_census_recife_v2',
   USER_PROFILE: 'sermac_eps_current_user_recife_v2'
 };
+
+export function loadStoredCensus(): UnitStaffCensus[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CENSUS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error('Error loading census', e);
+  }
+  return INITIAL_STAFF_CENSUS;
+}
+
+export function saveStoredCensus(censusList: UnitStaffCensus[]) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.CENSUS, JSON.stringify(censusList));
+  } catch (e) {
+    console.error('Error saving census', e);
+  }
+}
 
 export function loadStoredUnits(): HealthUnit[] {
   try {

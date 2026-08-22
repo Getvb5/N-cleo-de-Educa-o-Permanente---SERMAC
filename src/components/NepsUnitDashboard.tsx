@@ -4,9 +4,11 @@ import {
   TrainingAction, 
   AttendanceRecord, 
   TrainingNeedDNC,
+  UnitStaffCensus,
   ProfessionalCategory,
   ThematicAxis 
 } from '../types';
+import { OfficialIndicatorsPanel } from './OfficialIndicatorsPanel';
 import { 
   ALL_THEMATIC_AXES, 
   ALL_PROFESSIONAL_CATEGORIES 
@@ -27,7 +29,10 @@ import {
   Filter, 
   AlertCircle,
   FileSpreadsheet,
-  QrCode
+  QrCode,
+  Target,
+  UserCheck,
+  Ban
 } from 'lucide-react';
 
 interface NepsUnitDashboardProps {
@@ -35,10 +40,13 @@ interface NepsUnitDashboardProps {
   actions: TrainingAction[];
   attendance: AttendanceRecord[];
   dncList: TrainingNeedDNC[];
+  censusList?: UnitStaffCensus[];
   onOpenNewAction: () => void;
   onSelectAction: (action: TrainingAction) => void;
   onOpenCertificate: (record: AttendanceRecord) => void;
   onSubmitDNC: (dnc: Omit<TrainingNeedDNC, 'id' | 'dateReported' | 'status'>) => void;
+  onOpenCensusModal?: (unit: HealthUnit) => void;
+  onOpenCancelModal?: (action: TrainingAction) => void;
 }
 
 export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
@@ -46,13 +54,16 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
   actions = [],
   attendance = [],
   dncList = [],
+  censusList = [],
   onOpenNewAction,
   onSelectAction,
   onOpenCertificate,
-  onSubmitDNC
+  onSubmitDNC,
+  onOpenCensusModal,
+  onOpenCancelModal
 }) => {
-  const [activeTab, setActiveTab] = useState<'acoes' | 'frequencias' | 'solicitar_dnc'>('acoes');
-  const [statusFilter, setStatusFilter] = useState<'todos' | 'planejada' | 'em_andamento' | 'concluida'>('todos');
+  const [activeTab, setActiveTab] = useState<'acoes' | 'indicadores' | 'frequencias' | 'solicitar_dnc'>('acoes');
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'planejada' | 'em_andamento' | 'concluida' | 'cancelada'>('todos');
   const [searchTerm, setSearchTerm] = useState('');
 
   // DNC Form States
@@ -220,6 +231,18 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
         </button>
 
         <button
+          onClick={() => setActiveTab('indicadores')}
+          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
+            activeTab === 'indicadores'
+              ? 'bg-teal-600 text-white font-semibold shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <Target className="w-3.5 h-3.5" />
+          <span>Indicadores & Metas da Unidade</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('frequencias')}
           className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
             activeTab === 'frequencias'
@@ -244,6 +267,17 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
         </button>
 
         <div className="ml-auto flex items-center gap-2 pr-1">
+          {onOpenCensusModal && (
+            <button
+              onClick={() => onOpenCensusModal(unit)}
+              className="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-3 py-1.5 rounded-md font-semibold text-xs flex items-center gap-1.5 transition-colors"
+              title="Atualizar quadro de servidores ativos para o cálculo do Índice de Atividade da EP"
+            >
+              <Users className="w-3.5 h-3.5 text-teal-600" />
+              <span>Censo de Ativos ({unit.totalStaff})</span>
+            </button>
+          )}
+
           <button
             onClick={onOpenNewAction}
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors"
@@ -253,6 +287,19 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* TAB: INDICADORES E CENSO DE ATIVOS */}
+      {activeTab === 'indicadores' && (
+        <div className="space-y-4">
+          <OfficialIndicatorsPanel
+            units={[unit]}
+            actions={actions}
+            attendance={attendance}
+            censusList={censusList}
+            onOpenCensusModal={onOpenCensusModal}
+          />
+        </div>
+      )}
 
       {/* TAB 1: UNIT ACTIONS */}
       {activeTab === 'acoes' && (

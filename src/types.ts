@@ -35,6 +35,22 @@ export interface HealthUnit {
   coordinatorName: string;
   coordinatorEmail: string;
   totalStaff: number;
+  activeStaffBreakdown?: Partial<Record<ProfessionalCategory, number>>;
+  lastCensusDate?: string;
+  censusStatus?: 'atualizado' | 'pendente' | 'em_revisao';
+}
+
+export interface UnitStaffCensus {
+  id: string;
+  unitId: string;
+  unitName: string;
+  period: string; // ex: '2026-08' ou 'Agosto/2026'
+  totalActiveStaff: number;
+  breakdown: Partial<Record<ProfessionalCategory, number>>;
+  notes?: string;
+  submittedBy: string;
+  submittedAt: string;
+  verifiedBySermac: boolean;
 }
 
 export type ProfessionalCategory =
@@ -113,7 +129,14 @@ export interface TrainingAction {
   timeSchedule: string;
   location: string;
   maxSeats: number;
+  plannedAttendeesCount?: number; // Nº de profissionais previstos para o tema (Indicador 3)
+  eligibleProfessionalsCount?: number; // Nº de profissionais elegíveis da categoria (Indicador 4)
+  isEsrLinked?: boolean; // Vinculado à Escola de Saúde do Recife - ESR (Indicador 6)
+  esrLinkType?: 'Certificação Oficial ESR' | 'Parceria Pedagógica ESR' | 'Instrutoria Conjunta' | 'Programa Estratégico ESR';
   status: ActionStatus;
+  cancellationReason?: string; // Motivo do cancelamento (Indicador 5)
+  cancellationCategory?: 'Falta de Quórum' | 'Emergência/Surto' | 'Indisponibilidade de Instrutor' | 'Problemas de Infraestrutura' | 'Escala de Plantão/Remanejamento' | 'Outro';
+  cancelledAt?: string;
   checkinPin: string;
   enrolledCount: number;
   attendedCount: number;
@@ -123,6 +146,104 @@ export interface TrainingAction {
   materialsNeeded?: string[];
   createdAt: string;
   createdBy: string;
+}
+
+export interface SermacIndicatorReport {
+  period: string; // ex: 'Agosto/2026' ou 'Consolidado 2026'
+  generatedAt: string;
+  
+  // 1. Índice de Atividade da Educação Permanente (Meta: >= 90%)
+  atividadeEP: {
+    uniqueParticipants: number;
+    totalActiveStaff: number;
+    rate: number; // %
+    meta: number; // 90
+    isGoalMet: boolean;
+    byUnit: Array<{
+      unitId: string;
+      unitName: string;
+      uniqueParticipants: number;
+      totalActiveStaff: number;
+      rate: number;
+      isGoalMet: boolean;
+    }>;
+  };
+
+  // 2. Taxa de Execução do Plano do NEP - TEP (Meta: 100%)
+  execucaoPlanoTEP: {
+    executedActions: number; // realizadas (concluídas)
+    plannedActions: number; // total planejadas no período
+    rate: number; // %
+    meta: number; // 100
+    isGoalMet: boolean;
+    byUnit: Array<{
+      unitId: string;
+      unitName: string;
+      executed: number;
+      planned: number;
+      rate: number;
+      isGoalMet: boolean;
+    }>;
+  };
+
+  // 3. Coeficiente de Assiduidade por Tema (Meta: 100%)
+  assiduidadePorTema: {
+    totalTrainedInTheme: number;
+    totalExpectedInTheme: number;
+    rate: number; // %
+    meta: number; // 100
+    isGoalMet: boolean;
+    byAction: Array<{
+      actionId: string;
+      actionCode: string;
+      title: string;
+      thematicAxis: ThematicAxis;
+      unitName: string;
+      trained: number;
+      expected: number;
+      rate: number;
+      isGoalMet: boolean;
+    }>;
+  };
+
+  // 4. Taxa de Adesão por Categoria Profissional (Meta: >= 90%)
+  adesaoPorCategoria: {
+    overallRate: number;
+    meta: number; // 90
+    byCategory: Array<{
+      category: ProfessionalCategory;
+      participantsCount: number;
+      eligibleCount: number;
+      rate: number;
+      isGoalMet: boolean;
+    }>;
+  };
+
+  // 5. Taxa de Cancelamento das Ações de EP (Meta: <= 10%)
+  taxaCancelamento: {
+    cancelledActions: number;
+    totalPlannedActions: number;
+    rate: number; // %
+    meta: number; // 10
+    isGoalMet: boolean;
+    reasonsBreakdown: Array<{
+      reason: string;
+      count: number;
+      percentage: number;
+    }>;
+  };
+
+  // 6. Percentual de Treinamentos Vinculados à ESR (Meta: A definir)
+  vinculacaoESR: {
+    esrLinkedActions: number;
+    totalCompletedActions: number;
+    rate: number; // %
+    metaLabel: string; // 'A definir'
+    byType: Array<{
+      type: string;
+      count: number;
+    }>;
+  };
 }
 
 export interface FeedbackData {
