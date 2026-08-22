@@ -1303,15 +1303,49 @@ export function saveStoredDNC(dnc: TrainingNeedDNC[]) {
   }
 }
 
-export const DEFAULT_SERMAC_USER: AuthUser = {
-  id: 'usr-sermac-01',
-  name: 'Profa. Dra. Regina Mendes',
-  email: 'coordenacao.sermac@saude.recife.pe.gov.br',
-  role: 'SERMAC_CENTRAL',
-  registrationNumber: 'SMS-00129',
-  jobTitle: 'Coordenadora Geral de Educação Permanente / SERMAC Recife',
-  avatarInitials: 'RM'
-};
+export const AUTHORIZED_CENTRAL_SERMAC_EMAILS = [
+  'getulio.batista@ufpe.br',
+  'neps.ggai@gmail.com',
+  'antonio.andrade@recife.pe.gov.br'
+] as const;
+
+export function isCentralSermacEmailAuthorized(email: string): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return (AUTHORIZED_CENTRAL_SERMAC_EMAILS as readonly string[]).includes(normalized);
+}
+
+export const AUTHORIZED_SERMAC_USERS: AuthUser[] = [
+  {
+    id: 'usr-sermac-getulio',
+    name: 'Prof. Getúlio Batista',
+    email: 'getulio.batista@ufpe.br',
+    role: 'SERMAC_CENTRAL',
+    registrationNumber: 'UFPE/SMS-0014',
+    jobTitle: 'Gestor & Pesquisador EPS • UFPE / SERMAC',
+    avatarInitials: 'GB'
+  },
+  {
+    id: 'usr-sermac-ggai',
+    name: 'Coordenação NEPS / GGAI',
+    email: 'neps.ggai@gmail.com',
+    role: 'SERMAC_CENTRAL',
+    registrationNumber: 'GGAI-SMS-2026',
+    jobTitle: 'Gerência Geral de Atenção e Informação • SERMAC',
+    avatarInitials: 'GG'
+  },
+  {
+    id: 'usr-sermac-antonio',
+    name: 'Dr. Antônio Andrade',
+    email: 'antonio.andrade@recife.pe.gov.br',
+    role: 'SERMAC_CENTRAL',
+    registrationNumber: 'SMS-00129',
+    jobTitle: 'Coordenação Geral de Educação Permanente • SERMAC Recife',
+    avatarInitials: 'AA'
+  }
+];
+
+export const DEFAULT_SERMAC_USER: AuthUser = AUTHORIZED_SERMAC_USERS[0];
 
 export const DEFAULT_NEPS_USERS: AuthUser[] = [
   {
@@ -1542,12 +1576,21 @@ export function loadStoredUser(): AuthUser | null {
     const raw = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.role) return parsed;
+      if (parsed && parsed.role) {
+        if (parsed.role === 'SERMAC_CENTRAL') {
+          if (isCentralSermacEmailAuthorized(parsed.email)) {
+            return parsed;
+          }
+          // Fallback to default authorized Central user
+          return DEFAULT_SERMAC_USER;
+        }
+        return parsed;
+      }
     }
   } catch (e) {
     console.error('Error loading stored user', e);
   }
-  // Default to SERMAC Central initially if nothing stored
+  // Default to Gestão Central - SERMAC initially if nothing stored
   return DEFAULT_SERMAC_USER;
 }
 

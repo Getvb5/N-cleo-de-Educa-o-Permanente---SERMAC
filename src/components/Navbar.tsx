@@ -52,12 +52,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return {
         initial: currentUser.avatarInitials || (currentRole === 'SERMAC_CENTRAL' ? 'GC' : currentRole === 'NEPS_UNIT' ? 'UN' : 'PS'),
         title: currentUser.name,
-        subtitle: currentUser.jobTitle || (currentRole === 'SERMAC_CENTRAL' ? 'Coordenação SERMAC' : currentUnit.name)
+        subtitle: currentUser.jobTitle || (currentRole === 'SERMAC_CENTRAL' ? 'Gestão Central - SERMAC' : currentUnit.name)
       };
     }
     switch (currentRole) {
       case 'SERMAC_CENTRAL':
-        return { initial: 'GC', title: 'Coordenação Central', subtitle: 'SERMAC - SMS' };
+        return { initial: 'GC', title: 'Gestão Central - SERMAC', subtitle: 'SMS Recife' };
       case 'NEPS_UNIT':
         return { initial: 'UN', title: currentUnit.coordinatorName || 'Coord. NEPS', subtitle: currentUnit.name };
       case 'PARTICIPANT':
@@ -111,7 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}
         >
           <Building2 className="w-4 h-4 shrink-0" />
-          <span>Gestão Central SERMAC</span>
+          <span>Gestão Central - SERMAC</span>
         </button>
 
         {/* NEPS Unit Role Button */}
@@ -125,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}
         >
           <Building className="w-4 h-4 shrink-0" />
-          <span>Núcleo NEPS Unidade</span>
+          <span>Núcleo NEPS - Unidade</span>
         </button>
 
         {/* Participant Role Button */}
@@ -293,8 +293,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">
-              {currentRole === 'SERMAC_CENTRAL' && 'Visão Geral das Unidades'}
-              {currentRole === 'NEPS_UNIT' && `Núcleo NEPS • ${currentUnit.name}`}
+              {currentRole === 'SERMAC_CENTRAL' && 'Gestão Central - SERMAC • Visão Geral da Rede'}
+              {currentRole === 'NEPS_UNIT' && `Núcleo NEPS - Unidade • ${currentUnit.name}`}
               {currentRole === 'PARTICIPANT' && 'Portal do Profissional de Saúde'}
             </h2>
             <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded uppercase tracking-wider hidden sm:inline-block">
@@ -302,7 +302,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
           <p className="text-[11px] text-slate-500 font-medium hidden md:block">
-            {currentRole === 'SERMAC_CENTRAL' && 'Secretaria Municipal de Saúde • Gestão Integrada de Capacitação'}
+            {currentRole === 'SERMAC_CENTRAL' && 'Secretaria Municipal de Saúde • Gestão Integrada de Educação Permanente'}
             {currentRole === 'NEPS_UNIT' && `${currentUnit.type} - Distrito ${currentUnit.district} • Coordenador(a): ${currentUnit.coordinatorName}`}
             {currentRole === 'PARTICIPANT' && 'Registro rápido de presença, avaliação de reação e emissão de certificados'}
           </p>
@@ -369,11 +369,11 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-blue-600 text-white shadow-xs font-bold' 
                 : 'hover:text-slate-900 hover:bg-slate-200/60'
             }`}
-            title="Gestão Central SERMAC"
+            title="Gestão Central - SERMAC"
           >
             <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Gestão Central</span>
-            <span className="inline sm:hidden">SERMAC</span>
+            <span className="hidden sm:inline">Gestão Central - SERMAC</span>
+            <span className="inline sm:hidden">Central</span>
           </button>
 
           <button 
@@ -384,10 +384,10 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-blue-600 text-white shadow-xs font-bold' 
                 : 'hover:text-slate-900 hover:bg-slate-200/60'
             }`}
-            title="Núcleo NEPS da Unidade"
+            title="Núcleo NEPS - Unidade"
           >
             <Building className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">NEPS Unidade</span>
+            <span className="hidden sm:inline">Núcleo NEPS - Unidade</span>
             <span className="inline sm:hidden">NEPS</span>
           </button>
 

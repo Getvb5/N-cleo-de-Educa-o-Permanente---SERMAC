@@ -3,7 +3,6 @@ import {
   Building2, 
   Building, 
   UserCheck, 
-  Lock, 
   Mail, 
   ShieldCheck, 
   ArrowRight, 
@@ -11,10 +10,15 @@ import {
   Sparkles,
   Info,
   KeyRound,
-  User
+  User,
+  ShieldAlert,
+  Check
 } from 'lucide-react';
 import { HealthUnit, AuthUser, UserRole } from '../types';
 import { 
+  AUTHORIZED_CENTRAL_SERMAC_EMAILS,
+  isCentralSermacEmailAuthorized,
+  AUTHORIZED_SERMAC_USERS,
   DEFAULT_SERMAC_USER, 
   DEFAULT_NEPS_USERS, 
   DEFAULT_PARTICIPANT_USER 
@@ -29,7 +33,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   const [activeRoleTab, setActiveRoleTab] = useState<UserRole>('SERMAC_CENTRAL');
   
   // SERMAC form state
-  const [sermacEmail, setSermacEmail] = useState('coordenacao.sermac@saude.gov.br');
+  const [sermacEmail, setSermacEmail] = useState('getulio.batista@ufpe.br');
   const [sermacPassword, setSermacPassword] = useState('sermac2026');
   
   // NEPS Unit form state
@@ -68,15 +72,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       setIsLoading(false);
 
       if (activeRoleTab === 'SERMAC_CENTRAL') {
-        if (!sermacEmail.trim()) {
-          setErrorMessage('Por favor, informe o e-mail ou matrícula da Coordenação SERMAC.');
+        const cleanEmail = sermacEmail.trim().toLowerCase();
+        if (!cleanEmail) {
+          setErrorMessage('Por favor, informe o e-mail cadastrado para a Gestão Central - SERMAC.');
           return;
         }
-        const sermacUser: AuthUser = {
+
+        // Strict Email Authorization Check
+        if (!isCentralSermacEmailAuthorized(cleanEmail)) {
+          setErrorMessage('Acesso restrito: O perfil Gestão Central - SERMAC é restrito aos seguintes e-mails autorizados: getulio.batista@ufpe.br, neps.ggai@gmail.com ou antonio.andrade@recife.pe.gov.br');
+          return;
+        }
+
+        const matchedUser = AUTHORIZED_SERMAC_USERS.find(u => u.email.toLowerCase() === cleanEmail) || {
           ...DEFAULT_SERMAC_USER,
-          email: sermacEmail
+          email: cleanEmail
         };
-        onLoginSuccess(sermacUser);
+
+        onLoginSuccess(matchedUser);
       } else if (activeRoleTab === 'NEPS_UNIT') {
         const matchedUser = DEFAULT_NEPS_USERS.find(u => u.unitId === selectedUnitId);
         const currentUnit = units.find(u => u.id === selectedUnitId) || units[0];
@@ -105,15 +118,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         };
         onLoginSuccess(partUser, currentUnit.id);
       }
-    }, 350);
+    }, 300);
   };
 
-  // Quick Fast-Logins
-  const handleQuickSermac = () => {
+  // Quick Fast-Logins for authorized central users
+  const handleQuickSermac = (user: AuthUser) => {
     setActiveRoleTab('SERMAC_CENTRAL');
-    setSermacEmail(DEFAULT_SERMAC_USER.email);
+    setSermacEmail(user.email);
     setSermacPassword('sermac2026');
-    onLoginSuccess(DEFAULT_SERMAC_USER);
+    setErrorMessage(null);
+    onLoginSuccess(user);
   };
 
   const handleQuickNepsUnit = (unitId: string) => {
@@ -128,7 +142,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
   const handleQuickParticipant = () => {
     setActiveRoleTab('PARTICIPANT');
-    onLoginSuccess(DEFAULT_PARTICIPANT_USER, 'unit-1');
+    onLoginSuccess(DEFAULT_PARTICIPANT_USER, 'unit-159');
   };
 
   const currentSelectedUnit = units.find(u => u.id === selectedUnitId) || units[0];
@@ -153,14 +167,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 PNEPS / SUS
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">Sistema Municipal de Educação Permanente em Saúde • SERMAC</p>
+            <p className="text-[11px] text-slate-400">Sistema Municipal de Educação Permanente em Saúde • SERMAC Recife</p>
           </div>
         </div>
 
         <div className="hidden sm:flex items-center gap-4 text-xs text-slate-400 font-medium">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            Ambiente Seguro SMS
+            Ambiente Seguro SMS Recife
           </span>
           <span className="w-1 h-1 rounded-full bg-slate-700" />
           <span>Versão 2026.1</span>
@@ -177,7 +191,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
               Acesso ao Sistema de Capacitação
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-md mx-auto">
-              Selecione seu perfil institucional para gerenciar os treinamentos, emitir certificados ou consultar indicadores.
+              Selecione seu perfil institucional para gerenciar treinamentos, emitir certificados ou consultar indicadores.
             </p>
 
             {/* Role Tab Selector */}
@@ -195,8 +209,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 }`}
               >
                 <Building2 className="w-4 h-4 mb-1" />
-                <span>Coordenação Central</span>
-                <span className="text-[10px] opacity-75 font-normal">SERMAC</span>
+                <span>Gestão Central</span>
+                <span className="text-[10px] opacity-80 font-semibold">- SERMAC</span>
               </button>
 
               {/* NEPS Unit Tab */}
@@ -212,7 +226,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
               >
                 <Building className="w-4 h-4 mb-1" />
                 <span>Núcleo NEPS</span>
-                <span className="text-[10px] opacity-75 font-normal">Unidade de Saúde</span>
+                <span className="text-[10px] opacity-80 font-semibold">- Unidade</span>
               </button>
 
               {/* Participant Tab */}
@@ -238,36 +252,84 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           <div className="p-6 sm:p-8 space-y-5">
             
             {errorMessage && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-300 text-xs flex items-center gap-2">
-                <Info className="w-4 h-4 shrink-0 text-rose-400" />
-                <span>{errorMessage}</span>
+              <div className="p-3 bg-rose-500/15 border border-rose-500/40 rounded-xl text-rose-200 text-xs flex items-start gap-2.5 animate-fadeIn">
+                <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                <div>
+                  <strong className="block text-rose-300 font-semibold mb-0.5">Acesso Não Autorizado</strong>
+                  <span>{errorMessage}</span>
+                </div>
               </div>
             )}
 
-            {/* TAB 1: COORDENAÇÃO CENTRAL - SERMAC */}
+            {/* TAB 1: GESTÃO CENTRAL - SERMAC */}
             {activeRoleTab === 'SERMAC_CENTRAL' && (
               <form onSubmit={handleLogin} className="space-y-4">
-                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-2.5 text-xs text-blue-200">
+                <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-start gap-2.5 text-xs text-blue-200">
                   <ShieldCheck className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
                   <div>
-                    <strong className="text-white block">Coordenação Central SERMAC</strong>
-                    Acesso completo à matriz intersetorial, Levantamento de Necessidades (LNT), diagnósticos IA e indicadores de todas as unidades da rede.
+                    <strong className="text-white block font-bold mb-0.5">Perfil: Gestão Central - SERMAC</strong>
+                    <span>
+                      Acesso restrito à Coordenação Geral de Educação Permanente, matriz intersetorial, diagnósticos IA, LNT e indicadores de toda a rede.
+                    </span>
+                  </div>
+                </div>
+
+                {/* Authorized Emails Helper Box */}
+                <div className="p-3 bg-slate-900/90 border border-slate-700/80 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+                      E-mails com Acesso Autorizado à Gestão Central:
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {AUTHORIZED_SERMAC_USERS.map((usr) => {
+                      const isSelected = sermacEmail.toLowerCase() === usr.email.toLowerCase();
+                      return (
+                        <button
+                          key={usr.email}
+                          type="button"
+                          onClick={() => {
+                            setSermacEmail(usr.email);
+                            setErrorMessage(null);
+                          }}
+                          className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition-all border ${
+                            isSelected
+                              ? 'bg-blue-600/20 border-blue-500 text-white font-medium'
+                              : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
+                          }`}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <span className="block font-semibold text-slate-200">{usr.name}</span>
+                            <span className="block font-mono text-[11px] text-blue-400">{usr.email}</span>
+                          </div>
+                          {isSelected ? (
+                            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                          ) : (
+                            <span className="text-[10px] text-slate-500 shrink-0">Selecionar</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    E-mail Institucional ou Matrícula SMS
+                    E-mail Autorizado (Gestão Central - SERMAC)
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       id="input-sermac-email"
-                      type="text"
+                      type="email"
                       value={sermacEmail}
-                      onChange={(e) => setSermacEmail(e.target.value)}
-                      placeholder="coordenacao.sermac@saude.gov.br"
-                      className="w-full bg-slate-900/90 border border-slate-700 rounded-lg pl-10 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                      onChange={(e) => {
+                        setSermacEmail(e.target.value);
+                        setErrorMessage(null);
+                      }}
+                      placeholder="getulio.batista@ufpe.br"
+                      className="w-full bg-slate-900/90 border border-slate-700 rounded-lg pl-10 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
                       required
                     />
                   </div>
@@ -301,7 +363,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                       <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <span>Entrar na Coordenação SERMAC</span>
+                        <span>Acessar Gestão Central - SERMAC</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -310,14 +372,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
               </form>
             )}
 
-            {/* TAB 2: COORDENAÇÃO NEPS - UNIDADE */}
+            {/* TAB 2: NÚCLEO NEPS - UNIDADE */}
             {activeRoleTab === 'NEPS_UNIT' && (
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-start gap-2.5 text-xs text-emerald-200">
                   <Building className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                   <div>
-                    <strong className="text-white block">Núcleo NEPS Local da Unidade</strong>
-                    Acesso à gestão de capacitações locais, QR Code de presença, envio de DNC e certificação direta da equipe da unidade.
+                    <strong className="text-white block">Perfil: Núcleo NEPS - Unidade</strong>
+                    Gestão de capacitações locais da unidade de saúde, QR Code de presença, envio de DNC e certificação direta da equipe.
                   </div>
                 </div>
 
@@ -390,7 +452,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                       <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <span>Acessar NEPS • {currentSelectedUnit.code}</span>
+                        <span>Acessar Núcleo NEPS - {currentSelectedUnit.code}</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -496,14 +558,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 <button
                   id="btn-fast-sermac"
                   type="button"
-                  onClick={handleQuickSermac}
+                  onClick={() => handleQuickSermac(AUTHORIZED_SERMAC_USERS[0])}
                   className="p-2.5 bg-slate-900/90 hover:bg-slate-900 hover:border-blue-500/50 border border-slate-700/80 rounded-lg text-left transition-all group"
+                  title="Acessar como Prof. Getúlio Batista (UFPE / SERMAC)"
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-blue-400 group-hover:text-blue-300">
-                    <span>SERMAC Central</span>
+                    <span>Gestão Central - SERMAC</span>
                     <Building2 className="w-3.5 h-3.5" />
                   </div>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">Dra. Regina Mendes</p>
+                  <p className="text-[10px] text-slate-300 font-medium truncate mt-0.5">Prof. Getúlio Batista</p>
+                  <p className="text-[9px] text-slate-500 font-mono truncate">getulio.batista@ufpe.br</p>
                 </button>
 
                 <button
@@ -513,10 +577,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                   className="p-2.5 bg-slate-900/90 hover:bg-slate-900 hover:border-emerald-500/50 border border-slate-700/80 rounded-lg text-left transition-all group"
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:text-emerald-300">
-                    <span>NEPS Poli. Agamenon</span>
+                    <span>Núcleo NEPS - Unidade</span>
                     <Building className="w-3.5 h-3.5" />
                   </div>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">Enf. Carla Albuquerque</p>
+                  <p className="text-[10px] text-slate-300 font-medium truncate mt-0.5">Enf. Carla Albuquerque</p>
+                  <p className="text-[9px] text-slate-500 truncate">US 159 Policlínica Agamenon</p>
                 </button>
 
                 <button
@@ -526,10 +591,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                   className="p-2.5 bg-slate-900/90 hover:bg-slate-900 hover:border-indigo-500/50 border border-slate-700/80 rounded-lg text-left transition-all group"
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-indigo-400 group-hover:text-indigo-300">
-                    <span>NEPS Mat. Bandeira</span>
+                    <span>Núcleo NEPS - Unidade</span>
                     <Building className="w-3.5 h-3.5" />
                   </div>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">Dra. Gabriela Fontes</p>
+                  <p className="text-[10px] text-slate-300 font-medium truncate mt-0.5">Dra. Gabriela Fontes</p>
+                  <p className="text-[9px] text-slate-500 truncate">US 165 Maternidade Bandeira</p>
                 </button>
               </div>
             </div>
@@ -550,7 +616,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
       {/* Footer */}
       <footer className="w-full text-center py-3 text-[11px] text-slate-500 z-10">
-        Prefeitura Municipal • Secretaria Municipal de Saúde • Educação Permanente em Saúde (EPS/NEPS)
+        Prefeitura Municipal do Recife • Secretaria Municipal de Saúde • Educação Permanente em Saúde (EPS/NEPS)
       </footer>
 
     </div>
