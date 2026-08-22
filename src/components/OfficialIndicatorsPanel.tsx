@@ -64,10 +64,19 @@ export const OfficialIndicatorsPanel: React.FC<OfficialIndicatorsPanelProps> = (
   censusList = [],
   onOpenCensusModal
 }) => {
-  const [selectedUnitId, setSelectedUnitId] = useState<string>('all');
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(() => {
+    return units.length === 1 ? units[0].id : 'all';
+  });
   const [selectedPeriod, setSelectedPeriod] = useState<string>('Agosto/2026');
   const [activeDetailTab, setActiveDetailTab] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
   const [showPrintModal, setShowPrintModal] = useState(false);
+
+  // Keep selectedUnitId synced if single unit changes
+  React.useEffect(() => {
+    if (units.length === 1) {
+      setSelectedUnitId(units[0].id);
+    }
+  }, [units]);
 
   // Compute report data using the official calculator
   const report = useMemo(() => {
@@ -120,7 +129,7 @@ export const OfficialIndicatorsPanel: React.FC<OfficialIndicatorsPanelProps> = (
               onChange={e => setSelectedUnitId(e.target.value)}
               className="bg-transparent text-xs font-semibold text-white focus:outline-none cursor-pointer truncate"
             >
-              <option value="all">Toda a Rede (19 Unidades)</option>
+              {units.length > 1 && <option value="all">Toda a Rede ({units.length} Unidades)</option>}
               {units.map(u => (
                 <option key={u.id} value={u.id}>
                   {u.name}

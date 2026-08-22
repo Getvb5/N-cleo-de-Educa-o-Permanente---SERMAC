@@ -217,60 +217,62 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
       </div>
 
       {/* TABS NAVIGATION */}
-      <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-xs text-xs font-semibold flex items-center gap-1 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('acoes')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
-            activeTab === 'acoes'
-              ? 'bg-blue-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>Ações da Unidade ({unitActions.length})</span>
-        </button>
+      <div className="bg-white p-1.5 rounded-xl border border-slate-200 shadow-xs text-xs font-semibold flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0">
+          <button
+            onClick={() => setActiveTab('acoes')}
+            className={`py-2 px-3 rounded-lg flex items-center gap-2 transition shrink-0 ${
+              activeTab === 'acoes'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Ações ({unitActions.length})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('indicadores')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
-            activeTab === 'indicadores'
-              ? 'bg-teal-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Target className="w-3.5 h-3.5" />
-          <span>Indicadores & Metas da Unidade</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('indicadores')}
+            className={`py-2 px-3 rounded-lg flex items-center gap-2 transition shrink-0 ${
+              activeTab === 'indicadores'
+                ? 'bg-teal-600 text-white font-semibold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Target className="w-3.5 h-3.5" />
+            <span>Indicadores & Metas</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('frequencias')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
-            activeTab === 'frequencias'
-              ? 'bg-blue-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>Frequências & Declarações ({unitAttendance.length})</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('frequencias')}
+            className={`py-2 px-3 rounded-lg flex items-center gap-2 transition shrink-0 ${
+              activeTab === 'frequencias'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Frequências ({unitAttendance.length})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('solicitar_dnc')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
-            activeTab === 'solicitar_dnc'
-              ? 'bg-blue-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Send className="w-3.5 h-3.5" />
-          <span>Solicitar Capacitação (DNC)</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('solicitar_dnc')}
+            className={`py-2 px-3 rounded-lg flex items-center gap-2 transition shrink-0 ${
+              activeTab === 'solicitar_dnc'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Solicitar DNC</span>
+          </button>
+        </div>
 
-        <div className="ml-auto flex items-center gap-2 pr-1">
+        <div className="flex items-center gap-2 ml-auto shrink-0">
           {onOpenCensusModal && (
             <button
               onClick={() => onOpenCensusModal(unit)}
-              className="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-3 py-1.5 rounded-md font-semibold text-xs flex items-center gap-1.5 transition-colors"
+              className="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-3 py-1.5 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors"
               title="Atualizar quadro de servidores ativos para o cálculo do Índice de Atividade da EP"
             >
               <Users className="w-3.5 h-3.5 text-teal-600" />
@@ -280,7 +282,7 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
 
           <button
             onClick={onOpenNewAction}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Novo Treinamento</span>

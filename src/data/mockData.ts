@@ -1581,8 +1581,7 @@ export function loadStoredUser(): AuthUser | null {
           if (isCentralSermacEmailAuthorized(parsed.email)) {
             return parsed;
           }
-          // Fallback to default authorized Central user
-          return DEFAULT_SERMAC_USER;
+          return null;
         }
         return parsed;
       }
@@ -1590,8 +1589,8 @@ export function loadStoredUser(): AuthUser | null {
   } catch (e) {
     console.error('Error loading stored user', e);
   }
-  // Default to Gestão Central - SERMAC initially if nothing stored
-  return DEFAULT_SERMAC_USER;
+  // Require explicit login by returning null when nothing valid is stored
+  return null;
 }
 
 export function saveStoredUser(user: AuthUser | null) {

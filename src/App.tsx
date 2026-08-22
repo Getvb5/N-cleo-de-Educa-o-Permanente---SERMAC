@@ -105,7 +105,9 @@ export default function App() {
 
   // Handle Logout
   const handleLogout = () => {
+    setCurrentUser(null);
     setIsLoggedIn(false);
+    saveStoredUser(null);
   };
 
   // Handle Quick Switch Role
