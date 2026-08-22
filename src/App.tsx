@@ -41,12 +41,13 @@ import { AuthScreen } from './components/AuthScreen';
 
 export default function App() {
   // Authentication & Role State
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => loadStoredUser());
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => currentUser !== null);
-  const [currentRole, setCurrentRole] = useState<UserRole>(() => currentUser?.role || 'SERMAC_CENTRAL');
+  const initialUser = loadStoredUser();
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(initialUser);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(initialUser !== null);
+  const [currentRole, setCurrentRole] = useState<UserRole>(initialUser?.role || 'SERMAC_CENTRAL');
   
   const [units, setUnits] = useState<HealthUnit[]>(() => getStoredHealthUnits());
-  const [selectedUnitId, setSelectedUnitId] = useState<string>(() => currentUser?.unitId || units[0]?.id || 'unit-1');
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(() => initialUser?.unitId || units[0]?.id || 'unit-1');
 
   // Core Data State
   const [actions, setActions] = useState<TrainingAction[]>(() => getStoredTrainingActions());
@@ -108,23 +109,6 @@ export default function App() {
     setCurrentUser(null);
     setIsLoggedIn(false);
     saveStoredUser(null);
-  };
-
-  // Handle Quick Switch Role
-  const handleSetRole = (role: UserRole) => {
-    setCurrentRole(role);
-    if (role === 'SERMAC_CENTRAL') {
-      setCurrentUser(DEFAULT_SERMAC_USER);
-      saveStoredUser(DEFAULT_SERMAC_USER);
-    } else if (role === 'NEPS_UNIT') {
-      const nepsUser = DEFAULT_NEPS_USERS.find(u => u.unitId === selectedUnitId) || DEFAULT_NEPS_USERS[0];
-      setCurrentUser(nepsUser);
-      if (nepsUser.unitId) setSelectedUnitId(nepsUser.unitId);
-      saveStoredUser(nepsUser);
-    } else if (role === 'PARTICIPANT') {
-      setCurrentUser(DEFAULT_PARTICIPANT_USER);
-      saveStoredUser(DEFAULT_PARTICIPANT_USER);
-    }
   };
 
   // Selected Unit object
@@ -258,7 +242,6 @@ export default function App() {
       {/* Sidebar Navigation */}
       <Sidebar
         currentRole={currentRole}
-        setCurrentRole={handleSetRole}
         units={units}
         selectedUnitId={selectedUnitId}
         currentUser={currentUser}
@@ -276,10 +259,8 @@ export default function App() {
         {/* Top Header */}
         <Header
           currentRole={currentRole}
-          setCurrentRole={handleSetRole}
           units={units}
           selectedUnitId={selectedUnitId}
-          setSelectedUnitId={setSelectedUnitId}
           currentUser={currentUser}
           onLogout={handleLogout}
           onOpenNewAction={() => setIsNewActionOpen(true)}
