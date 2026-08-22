@@ -1,12 +1,27 @@
 export type UserRole = 'SERMAC_CENTRAL' | 'NEPS_UNIT' | 'PARTICIPANT';
 
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  registrationNumber: string;
+  unitId?: string;
+  unitName?: string;
+  avatarInitials?: string;
+  jobTitle?: string;
+}
+
 export type UnitType = 
   | 'UBS' 
   | 'ESF' 
   | 'UPA' 
   | 'HOSPITAL' 
+  | 'MATERNIDADE'
   | 'CAPS' 
   | 'POLICLINICA' 
+  | 'AMBULATORIO'
+  | 'CENTRO_SAUDE'
   | 'VIGILANCIA' 
   | 'SAMU' 
   | 'LABORATORIO';
@@ -153,7 +168,7 @@ export interface TrainingNeedDNC {
   urgency: 'Baixa' | 'Média' | 'Alta' | 'Crítica';
   requestedBy: string;
   dateReported: string;
-  status: 'Pendente' | 'Aprovado_PAEPS' | 'Em_Planejamento' | 'Atendido';
+  status: 'Pendente' | 'Aprovado_LNT' | 'Aprovado_PAEPS' | 'Em_Planejamento' | 'Atendido';
 }
 
 export interface AIAnalysisResult {

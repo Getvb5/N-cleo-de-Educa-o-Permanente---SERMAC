@@ -344,7 +344,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
             className="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md border border-slate-200 transition flex items-center gap-1.5"
           >
             <FileText className="w-3.5 h-3.5 text-blue-600" />
-            <span>PAEPS 2026</span>
+            <span>LNT 2026</span>
           </button>
 
           <button
@@ -740,7 +740,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
               onClick={onOpenPaepsPlan}
               className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md shadow-xs transition"
             >
-              Consolidar no PAEPS
+              Consolidar no LNT
             </button>
           </div>
 
@@ -781,12 +781,12 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
 
                 <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
                   <span className="text-[11px] text-slate-500 font-medium">
-                    Status: <strong className="text-slate-800">{dnc.status.replace('_', ' ')}</strong>
+                    Status: <strong className="text-slate-800">{dnc.status.replace('_', ' ').replace('PAEPS', 'LNT')}</strong>
                   </span>
                   
                   {dnc.status === 'Pendente' && (
                     <button
-                      onClick={() => onUpdateDncStatus(dnc.id, 'Aprovado_PAEPS')}
+                      onClick={() => onUpdateDncStatus(dnc.id, 'Aprovado_LNT')}
                       className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded shadow-2xs transition"
                     >
                       Aprovar

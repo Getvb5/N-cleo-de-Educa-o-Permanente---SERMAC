@@ -5,7 +5,8 @@ import {
   TrainingAction, 
   AttendanceRecord, 
   TrainingNeedDNC,
-  FeedbackData 
+  FeedbackData,
+  AuthUser 
 } from './types';
 import { 
   getStoredHealthUnits, 
@@ -14,7 +15,12 @@ import {
   getStoredAttendance, 
   saveStoredAttendance,
   getStoredDNC,
-  saveStoredDNC 
+  saveStoredDNC,
+  loadStoredUser,
+  saveStoredUser,
+  DEFAULT_SERMAC_USER,
+  DEFAULT_NEPS_USERS,
+  DEFAULT_PARTICIPANT_USER
 } from './data/mockData';
 import { Sidebar, Header } from './components/Navbar';
 import { CentralSermacDashboard } from './components/CentralSermacDashboard';
@@ -25,12 +31,16 @@ import { TrainingDetailsModal } from './components/TrainingDetailsModal';
 import { CertificateModal } from './components/CertificateModal';
 import { AiDiagnosisModal } from './components/AiDiagnosisModal';
 import { PaepsPlanModal } from './components/PaepsPlanModal';
+import { AuthScreen } from './components/AuthScreen';
 
 export default function App() {
-  // Navigation & Role State
-  const [currentRole, setCurrentRole] = useState<UserRole>('SERMAC_CENTRAL');
+  // Authentication & Role State
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => loadStoredUser());
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => currentUser !== null);
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => currentUser?.role || 'SERMAC_CENTRAL');
+  
   const [units] = useState<HealthUnit[]>(getStoredHealthUnits());
-  const [selectedUnitId, setSelectedUnitId] = useState<string>(units[0]?.id || '');
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(() => currentUser?.unitId || units[0]?.id || 'unit-1');
 
   // Core Data State
   const [actions, setActions] = useState<TrainingAction[]>(() => getStoredTrainingActions());
@@ -56,6 +66,47 @@ export default function App() {
   useEffect(() => {
     saveStoredDNC(dncList);
   }, [dncList]);
+
+  useEffect(() => {
+    if (currentUser) {
+      saveStoredUser(currentUser);
+    }
+  }, [currentUser]);
+
+  // Handle Login
+  const handleLoginSuccess = (user: AuthUser, unitId?: string) => {
+    setCurrentUser(user);
+    setCurrentRole(user.role);
+    if (unitId) {
+      setSelectedUnitId(unitId);
+    } else if (user.unitId) {
+      setSelectedUnitId(user.unitId);
+    }
+    setIsLoggedIn(true);
+    saveStoredUser(user);
+  };
+
+  // Handle Logout
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+  };
+
+  // Handle Quick Switch Role
+  const handleSetRole = (role: UserRole) => {
+    setCurrentRole(role);
+    if (role === 'SERMAC_CENTRAL') {
+      setCurrentUser(DEFAULT_SERMAC_USER);
+      saveStoredUser(DEFAULT_SERMAC_USER);
+    } else if (role === 'NEPS_UNIT') {
+      const nepsUser = DEFAULT_NEPS_USERS.find(u => u.unitId === selectedUnitId) || DEFAULT_NEPS_USERS[0];
+      setCurrentUser(nepsUser);
+      if (nepsUser.unitId) setSelectedUnitId(nepsUser.unitId);
+      saveStoredUser(nepsUser);
+    } else if (role === 'PARTICIPANT') {
+      setCurrentUser(DEFAULT_PARTICIPANT_USER);
+      saveStoredUser(DEFAULT_PARTICIPANT_USER);
+    }
+  };
 
   // Selected Unit object
   const currentUnit = units.find(u => u.id === selectedUnitId) || units[0];
@@ -121,15 +172,22 @@ export default function App() {
   // UI State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // If not authenticated, render Login Screen
+  if (!isLoggedIn) {
+    return <AuthScreen units={units} onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="flex min-h-screen w-full bg-[#F1F5F9] text-slate-900 font-sans antialiased">
       
       {/* Sidebar Navigation */}
       <Sidebar
         currentRole={currentRole}
-        setCurrentRole={setCurrentRole}
+        setCurrentRole={handleSetRole}
         units={units}
         selectedUnitId={selectedUnitId}
+        currentUser={currentUser}
+        onLogout={handleLogout}
         onOpenNewAction={() => setIsNewActionOpen(true)}
         onOpenAiDiagnosis={() => setIsAiDiagnosisOpen(true)}
         onOpenPaepsPlan={() => setIsPaepsPlanOpen(true)}
@@ -143,10 +201,12 @@ export default function App() {
         {/* Top Header */}
         <Header
           currentRole={currentRole}
-          setCurrentRole={setCurrentRole}
+          setCurrentRole={handleSetRole}
           units={units}
           selectedUnitId={selectedUnitId}
           setSelectedUnitId={setSelectedUnitId}
+          currentUser={currentUser}
+          onLogout={handleLogout}
           onOpenNewAction={() => setIsNewActionOpen(true)}
           onOpenAiDiagnosis={() => setIsAiDiagnosisOpen(true)}
           onOpenPaepsPlan={() => setIsPaepsPlanOpen(true)}

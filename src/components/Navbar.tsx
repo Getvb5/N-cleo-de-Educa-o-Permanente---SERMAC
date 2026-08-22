@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   UserRole, 
-  HealthUnit 
+  HealthUnit,
+  AuthUser 
 } from '../types';
 import { 
   Building2, 
@@ -11,7 +12,10 @@ import {
   FileText, 
   Menu, 
   X, 
-  Plus
+  Plus,
+  LogOut,
+  User,
+  Shield
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,6 +23,8 @@ interface SidebarProps {
   setCurrentRole: (role: UserRole) => void;
   units: HealthUnit[];
   selectedUnitId: string;
+  currentUser: AuthUser | null;
+  onLogout: () => void;
   onOpenAiDiagnosis: () => void;
   onOpenNewAction: () => void;
   onOpenPaepsPlan?: () => void;
@@ -31,6 +37,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCurrentRole,
   units,
   selectedUnitId,
+  currentUser,
+  onLogout,
   onOpenAiDiagnosis,
   onOpenNewAction,
   onOpenPaepsPlan,
@@ -40,9 +48,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const currentUnit = units.find(u => u.id === selectedUnitId) || units[0];
 
   const getRoleBadge = () => {
+    if (currentUser) {
+      return {
+        initial: currentUser.avatarInitials || (currentRole === 'SERMAC_CENTRAL' ? 'GC' : currentRole === 'NEPS_UNIT' ? 'UN' : 'PS'),
+        title: currentUser.name,
+        subtitle: currentUser.jobTitle || (currentRole === 'SERMAC_CENTRAL' ? 'Coordenação SERMAC' : currentUnit.name)
+      };
+    }
     switch (currentRole) {
       case 'SERMAC_CENTRAL':
-        return { initial: 'GC', title: 'Gestão Central', subtitle: 'SERMAC - Admin' };
+        return { initial: 'GC', title: 'Coordenação Central', subtitle: 'SERMAC - SMS' };
       case 'NEPS_UNIT':
         return { initial: 'UN', title: currentUnit.coordinatorName || 'Coord. NEPS', subtitle: currentUnit.name };
       case 'PARTICIPANT':
@@ -145,12 +160,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {onOpenPaepsPlan && (
               <button
-                id="sidebar-btn-paeps"
+                id="sidebar-btn-lnt"
                 onClick={() => { onOpenPaepsPlan(); setMobileMenuOpen(false); }}
                 className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-800 rounded-md text-xs text-teal-300 transition-colors text-left font-medium"
               >
                 <FileText className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>Plano Anual PAEPS 2026</span>
+                <span>Levantamento de Necessidades (LNT)</span>
               </button>
             )}
           </>
@@ -184,16 +199,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </nav>
 
-      {/* User / Profile Footer */}
-      <div className="p-4 border-t border-slate-700/50 bg-slate-900/50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
-            {roleInfo.initial}
+      {/* User / Profile Footer & Logout Button */}
+      <div className="p-4 border-t border-slate-700/50 bg-slate-900/80">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
+              {roleInfo.initial}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-white truncate">{roleInfo.title}</p>
+              <p className="text-[10px] text-slate-400 truncate">{roleInfo.subtitle}</p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-white truncate">{roleInfo.title}</p>
-            <p className="text-[10px] text-slate-400 truncate">{roleInfo.subtitle}</p>
-          </div>
+
+          <button
+            id="sidebar-btn-logout"
+            onClick={onLogout}
+            title="Trocar Perfil / Sair"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors shrink-0"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
@@ -228,6 +254,8 @@ interface HeaderProps {
   selectedUnitId: string;
   setSelectedUnitId: (unitId: string) => void;
   units: HealthUnit[];
+  currentUser: AuthUser | null;
+  onLogout: () => void;
   onOpenAiDiagnosis: () => void;
   onOpenNewAction: () => void;
   onOpenPaepsPlan?: () => void;
@@ -240,6 +268,8 @@ export const Header: React.FC<HeaderProps> = ({
   selectedUnitId,
   setSelectedUnitId,
   units,
+  currentUser,
+  onLogout,
   onOpenAiDiagnosis,
   onOpenNewAction,
   onOpenMobileMenu
@@ -279,7 +309,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right Side: Filters, Unit Selector & Quick Role Switch */}
+      {/* Right Side: Filters, Unit Selector, Quick Role Switch & Logout */}
       <div className="flex items-center gap-2.5 sm:gap-3 text-xs">
         
         {/* Unit Selector when on NEPS mode */}
@@ -377,20 +407,18 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
+        {/* User Account / Logout Action */}
+        <button
+          id="header-btn-switch-user"
+          onClick={onLogout}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors"
+          title="Trocar Perfil de Usuário ou Sair"
+        >
+          <LogOut className="w-3.5 h-3.5 text-slate-500" />
+          <span className="hidden lg:inline">Sair</span>
+        </button>
+
       </div>
     </header>
-  );
-};
-
-// Default export if required
-export const Navbar: React.FC<SidebarProps & HeaderProps> = (props) => {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  return (
-    <div className="flex w-full">
-      <Sidebar {...props} mobileMenuOpen={mobileOpen} setMobileMenuOpen={setMobileOpen} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header {...props} onOpenMobileMenu={() => setMobileOpen(true)} />
-      </div>
-    </div>
   );
 };
