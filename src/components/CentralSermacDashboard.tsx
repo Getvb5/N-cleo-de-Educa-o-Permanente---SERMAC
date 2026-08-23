@@ -226,134 +226,154 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
         
         {/* KPI 1: Total Treinados */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Total de Treinados
-          </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{metrics.totalAttendances}</span>
-            <span className="text-xs text-emerald-600 font-semibold">{metrics.uniqueParticipants} únicos</span>
+        <div className="bg-white p-4 sm:p-5 rounded-lg border border-slate-300 shadow-xs hover:border-slate-400 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              Total de Treinados
+            </p>
+            <div className="w-7 h-7 rounded bg-[#EBF2FC] text-[#0C326F] flex items-center justify-center">
+              <Users className="w-4 h-4" />
+            </div>
           </div>
-          <div className="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500" style={{ width: `${Math.min(100, (metrics.uniqueParticipants / (metrics.totalStaff || 1)) * 100)}%` }}></div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-[#0C326F] tracking-tight">{metrics.totalAttendances}</span>
+            <span className="text-xs text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{metrics.uniqueParticipants} únicos</span>
+          </div>
+          <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-[#1351B4] rounded-full" style={{ width: `${Math.min(100, (metrics.uniqueParticipants / (metrics.totalStaff || 1)) * 100)}%` }}></div>
           </div>
         </div>
 
         {/* KPI 2: Instrutores Ativos */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Instrutores Ativos
-          </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{metrics.uniqueInstructors}</span>
-            <span className="text-xs text-slate-400 font-medium">Meta: 20</span>
+        <div className="bg-white p-4 sm:p-5 rounded-lg border border-slate-300 shadow-xs hover:border-slate-400 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              Instrutores Ativos
+            </p>
+            <div className="w-7 h-7 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center">
+              <UserCheck className="w-4 h-4" />
+            </div>
           </div>
-          <div className="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, (metrics.uniqueInstructors / 20) * 100)}%` }}></div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-[#0C326F] tracking-tight">{metrics.uniqueInstructors}</span>
+            <span className="text-xs text-slate-600 font-semibold">Meta: 20 docentes</span>
+          </div>
+          <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${Math.min(100, (metrics.uniqueInstructors / 20) * 100)}%` }}></div>
           </div>
         </div>
 
         {/* KPI 3: Horas de Treinamento */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Horas de Treinamento
-          </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{metrics.totalHoursDelivered}h</span>
-            <span className="text-xs text-blue-600 font-medium">{metrics.totalActions} ações</span>
+        <div className="bg-white p-4 sm:p-5 rounded-lg border border-slate-300 shadow-xs hover:border-slate-400 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              Horas Ofertadas
+            </p>
+            <div className="w-7 h-7 rounded bg-blue-50 text-[#1351B4] flex items-center justify-center">
+              <Clock className="w-4 h-4" />
+            </div>
           </div>
-          <div className="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-500 w-[68%]"></div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-[#0C326F] tracking-tight">{metrics.totalHoursDelivered}h</span>
+            <span className="text-xs text-[#1351B4] font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">{metrics.totalActions} ações</span>
+          </div>
+          <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-[#1351B4] rounded-full w-[68%]"></div>
           </div>
         </div>
 
         {/* KPI 4: Pendências Registro / DNC */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Demandas DNC Pendentes
-          </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-red-600">0{metrics.pendingDncCount}</span>
-            <span className="text-xs text-red-500 font-medium">Requer Análise</span>
+        <div className="bg-white p-4 sm:p-5 rounded-lg border border-slate-300 shadow-xs hover:border-slate-400 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              Demandas DNC
+            </p>
+            <div className="w-7 h-7 rounded bg-rose-50 text-rose-700 flex items-center justify-center">
+              <AlertCircle className="w-4 h-4" />
+            </div>
           </div>
-          <div className="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-red-500" style={{ width: `${Math.min(100, metrics.pendingDncCount * 25)}%` }}></div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-rose-700 tracking-tight">0{metrics.pendingDncCount}</span>
+            <span className="text-xs text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">Pendente Análise</span>
+          </div>
+          <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-rose-600 rounded-full" style={{ width: `${Math.min(100, metrics.pendingDncCount * 25)}%` }}></div>
           </div>
         </div>
 
       </div>
 
       {/* TABS NAVIGATION */}
-      <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-xs text-xs font-semibold flex items-center gap-1 overflow-x-auto">
+      <div className="bg-white p-1 rounded-lg border border-slate-300 shadow-xs text-xs font-bold flex items-center gap-1 overflow-x-auto">
         <button
           onClick={() => setActiveTab('indicadores_oficiais')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
+          className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
             activeTab === 'indicadores_oficiais'
-              ? 'bg-teal-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#0C326F] text-white font-bold shadow-xs'
+              : 'text-slate-700 hover:bg-slate-100 font-semibold'
           }`}
         >
-          <Target className="w-3.5 h-3.5" />
+          <Target className="w-4 h-4" />
           <span>Indicadores Oficiais SERMAC / NEPS</span>
         </button>
 
         <button
           onClick={() => setActiveTab('indicadores')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
+          className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
             activeTab === 'indicadores'
-              ? 'bg-blue-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#1351B4] text-white font-bold shadow-xs'
+              : 'text-slate-700 hover:bg-slate-100 font-semibold'
           }`}
         >
-          <TrendingUp className="w-3.5 h-3.5" />
+          <TrendingUp className="w-4 h-4" />
           <span>Visão Operacional Geral</span>
         </button>
 
         <button
           onClick={() => setActiveTab('quem_treina_quem')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
+          className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
             activeTab === 'quem_treina_quem'
-              ? 'bg-blue-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#1351B4] text-white font-bold shadow-xs'
+              : 'text-slate-700 hover:bg-slate-100 font-semibold'
           }`}
         >
-          <Users className="w-3.5 h-3.5" />
+          <Users className="w-4 h-4" />
           <span>Matriz "Quem Treina Quem"</span>
         </button>
 
         <button
           onClick={() => setActiveTab('unidades')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
+          className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
             activeTab === 'unidades'
-              ? 'bg-blue-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#1351B4] text-white font-bold shadow-xs'
+              : 'text-slate-700 hover:bg-slate-100 font-semibold'
           }`}
         >
-          <Building2 className="w-3.5 h-3.5" />
+          <Building2 className="w-4 h-4" />
           <span>Ranking de Unidades</span>
         </button>
 
         <button
           onClick={() => setActiveTab('dnc')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
+          className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
             activeTab === 'dnc'
-              ? 'bg-blue-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#1351B4] text-white font-bold shadow-xs'
+              : 'text-slate-700 hover:bg-slate-100 font-semibold'
           }`}
         >
-          <AlertCircle className="w-3.5 h-3.5" />
+          <AlertCircle className="w-4 h-4" />
           <span>Demandas DNC ({dncList.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('acoes')}
-          className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition shrink-0 ${
+          className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
             activeTab === 'acoes'
-              ? 'bg-blue-600 text-white font-semibold shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-[#1351B4] text-white font-bold shadow-xs'
+              : 'text-slate-700 hover:bg-slate-100 font-semibold'
           }`}
         >
-          <Layers className="w-3.5 h-3.5" />
+          <Layers className="w-4 h-4" />
           <span>Ações Cadastradas ({actions.length})</span>
         </button>
 

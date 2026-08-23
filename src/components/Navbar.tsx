@@ -66,28 +66,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const roleInfo = getRoleBadge();
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#0F172A] text-slate-300 select-none">
+    <div className="flex flex-col h-full bg-[#0C326F] text-slate-100 select-none border-r border-[#08234D] shadow-xl">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+      <div className="p-5 border-b border-[#1A4588] bg-[#0A295B] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-base shadow-sm shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-[#0C326F] font-black text-xl shadow-sm shrink-0 border border-slate-200">
             +
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-white font-bold text-lg tracking-tight">
-                NEPS <span className="text-blue-400">SERMAC</span>
+              <h1 className="text-white font-black text-lg tracking-tight">
+                NEPS <span className="text-[#8AB4F8]">SERMAC</span>
               </h1>
             </div>
-            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mt-0.5">
-              Educação Permanente • Recife
+            <p className="text-[10px] uppercase tracking-wider text-slate-200 font-semibold mt-0.5">
+              Secretaria de Saúde • SUS Recife
             </p>
           </div>
         </div>
         {mobileMenuOpen && (
           <button 
             onClick={() => setMobileMenuOpen(false)} 
-            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 lg:hidden"
+            className="text-slate-300 hover:text-white p-1.5 rounded-lg hover:bg-[#1A4588] lg:hidden"
           >
             <X className="w-5 h-5" />
           </button>
@@ -95,29 +95,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Role Context Header */}
-      <div className="px-5 py-3.5 bg-slate-900 border-b border-slate-800">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-          Ambiente Autenticado
+      <div className="px-5 py-3 bg-[#08234D] border-b border-[#1A4588]">
+        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-1">
+          Ambiente Institucional
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {currentRole === 'SERMAC_CENTRAL' && (
             <>
-              <Building2 className="w-4 h-4 text-blue-400 shrink-0" />
+              <div className="w-6 h-6 rounded bg-[#1351B4] flex items-center justify-center shrink-0">
+                <Building2 className="w-3.5 h-3.5 text-white" />
+              </div>
               <span className="text-xs font-bold text-white">Gestão Central - SERMAC</span>
             </>
           )}
           {currentRole === 'NEPS_UNIT' && (
             <>
-              <Building className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="w-6 h-6 rounded bg-emerald-600 flex items-center justify-center shrink-0">
+                <Building className="w-3.5 h-3.5 text-white" />
+              </div>
               <div className="min-w-0">
                 <span className="text-xs font-bold text-white block truncate">Núcleo NEPS</span>
-                <span className="text-[11px] text-emerald-300 block truncate">{currentUnit.name}</span>
+                <span className="text-[11px] text-emerald-200 block truncate">{currentUnit.name}</span>
               </div>
             </>
           )}
           {currentRole === 'PARTICIPANT' && (
             <>
-              <UserCheck className="w-4 h-4 text-purple-400 shrink-0" />
+              <div className="w-6 h-6 rounded bg-purple-600 flex items-center justify-center shrink-0">
+                <UserCheck className="w-3.5 h-3.5 text-white" />
+              </div>
               <span className="text-xs font-bold text-white">Portal do Participante</span>
             </>
           )}
@@ -125,29 +131,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Role-Specific Navigation */}
-      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         
         {currentRole === 'SERMAC_CENTRAL' && (
           <>
-            <div className="text-[10px] font-bold text-slate-400 uppercase px-3 pb-1 pt-2 tracking-wider">
+            <div className="text-[10px] font-bold text-slate-300 uppercase px-3 pb-1 pt-1 tracking-wider">
               Painel Estratégico da Rede
             </div>
 
-            <div className="px-3 py-2 bg-blue-600/15 border border-blue-500/30 rounded-lg text-xs font-semibold text-blue-200 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-blue-400" />
+            <div className="px-3.5 py-2.5 bg-[#1351B4] text-white rounded-lg text-xs font-bold flex items-center gap-2.5 shadow-sm border border-[#2670E8]">
+              <Building2 className="w-4 h-4 text-white" />
               <span>Visão Global dos 8 Distritos</span>
             </div>
 
-            <div className="text-[10px] font-bold text-slate-400 uppercase px-3 pt-5 pb-1 tracking-wider">
+            <div className="text-[10px] font-bold text-slate-300 uppercase px-3 pt-4 pb-1 tracking-wider">
               Ferramentas Centrais
             </div>
             
             <button
               id="sidebar-btn-ai-diag"
               onClick={() => { onOpenAiDiagnosis(); setMobileMenuOpen(false); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-800 rounded-lg text-xs text-purple-300 transition-colors text-left font-medium"
+              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#1A4588] rounded-lg text-xs text-white transition-all text-left font-medium"
             >
-              <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+              <Sparkles className="w-4 h-4 text-[#8AB4F8] shrink-0" />
               <span>Diagnóstico IA Gemini</span>
             </button>
 
@@ -155,9 +161,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 id="sidebar-btn-lnt"
                 onClick={() => { onOpenPaepsPlan(); setMobileMenuOpen(false); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-800 rounded-lg text-xs text-teal-300 transition-colors text-left font-medium"
+                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#1A4588] rounded-lg text-xs text-white transition-all text-left font-medium"
               >
-                <FileText className="w-4 h-4 text-teal-400 shrink-0" />
+                <FileText className="w-4 h-4 text-[#8AB4F8] shrink-0" />
                 <span>Levantamento de Necessidades (LNT)</span>
               </button>
             )}
@@ -166,25 +172,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {currentRole === 'NEPS_UNIT' && (
           <>
-            <div className="text-[10px] font-bold text-slate-400 uppercase px-3 pb-1 pt-2 tracking-wider">
+            <div className="text-[10px] font-bold text-slate-300 uppercase px-3 pb-1 pt-1 tracking-wider">
               Gestão da Unidade
             </div>
 
-            <div className="px-3 py-2 bg-emerald-600/15 border border-emerald-500/30 rounded-lg text-xs font-semibold text-emerald-200 flex items-center gap-2">
-              <Building className="w-4 h-4 text-emerald-400" />
+            <div className="px-3.5 py-2.5 bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-2.5 shadow-sm border border-emerald-500">
+              <Building className="w-4 h-4 text-white" />
               <span>Painel Local • {currentUnit.code}</span>
             </div>
 
-            <div className="text-[10px] font-bold text-slate-400 uppercase px-3 pt-5 pb-1 tracking-wider">
+            <div className="text-[10px] font-bold text-slate-300 uppercase px-3 pt-4 pb-1 tracking-wider">
               Ações do Núcleo
             </div>
             
             <button
               id="sidebar-btn-new-action"
               onClick={() => { onOpenNewAction(); setMobileMenuOpen(false); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 bg-blue-600/20 text-blue-300 border border-blue-500/40 hover:bg-blue-600/30 rounded-lg text-xs transition-colors text-left font-semibold"
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 bg-[#1351B4] hover:bg-[#1A5CD6] text-white rounded-lg text-xs shadow-sm transition-all text-left font-bold border border-[#2670E8]"
             >
-              <Plus className="w-4 h-4 text-blue-300 shrink-0" />
+              <Plus className="w-4 h-4 text-white shrink-0" />
               <span>Novo Treinamento</span>
             </button>
           </>
@@ -192,47 +198,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {currentRole === 'PARTICIPANT' && (
           <>
-            <div className="text-[10px] font-bold text-slate-400 uppercase px-3 pb-1 pt-2 tracking-wider">
+            <div className="text-[10px] font-bold text-slate-300 uppercase px-3 pb-1 pt-1 tracking-wider">
               Área do Profissional
             </div>
 
-            <div className="px-3 py-2 bg-purple-600/15 border border-purple-500/30 rounded-lg text-xs font-semibold text-purple-200 flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-purple-400" />
+            <div className="px-3.5 py-2.5 bg-purple-700 text-white rounded-lg text-xs font-bold flex items-center gap-2.5 shadow-sm border border-purple-500">
+              <UserCheck className="w-4 h-4 text-white" />
               <span>Auto-Check-in & Certificados</span>
             </div>
           </>
         )}
 
-        {/* SUS Guidelines Micro note */}
-        <div className="pt-6 px-3">
-          <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-[11px] text-slate-400">
-            <p className="font-semibold text-slate-300 mb-0.5">PNEPS / SUS</p>
-            <p className="text-[10px] text-slate-400 leading-relaxed">
-              Educação Permanente baseada na problematização do processo de trabalho.
+        {/* SUS Guidelines Institutional Banner */}
+        <div className="pt-4 px-1">
+          <div className="p-3.5 rounded-lg bg-[#08234D] border border-[#1A4588] text-[11px] text-slate-200 space-y-1">
+            <div className="flex items-center gap-1.5 text-[#8AB4F8] font-bold text-[10px] uppercase tracking-wider">
+              <Shield className="w-3.5 h-3.5" />
+              PNEPS / SUS Recife
+            </div>
+            <p className="text-[10px] text-slate-300 leading-relaxed">
+              Educação Permanente baseada na problematização e qualificação do trabalho em saúde pública.
             </p>
           </div>
         </div>
       </nav>
 
       {/* User / Profile Footer & Logout Button */}
-      <div className="p-4 border-t border-slate-800 bg-slate-900/90">
+      <div className="p-4 border-t border-[#1A4588] bg-[#0A295B]">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="relative shrink-0">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-[#1351B4] flex items-center justify-center text-white font-bold text-xs border border-white/20">
                 {roleInfo.initial}
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white truncate">{roleInfo.title}</p>
-              <p className="text-[10px] text-slate-400 truncate">{currentUser?.email || roleInfo.subtitle}</p>
+              <p className="text-xs font-bold text-white truncate">{roleInfo.title}</p>
+              <p className="text-[10px] text-slate-300 truncate">{currentUser?.email || roleInfo.subtitle}</p>
             </div>
           </div>
-
           <button
             id="sidebar-btn-logout"
             onClick={onLogout}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors shrink-0"
+            className="p-2 rounded-lg text-slate-300 hover:text-rose-300 hover:bg-[#1A4588] transition-colors shrink-0"
             title="Sair da Conta / Trocar de Perfil"
           >
             <LogOut className="w-4 h-4" />
@@ -291,14 +299,14 @@ export const Header: React.FC<HeaderProps> = ({
   const currentUnit = units.find(u => u.id === selectedUnitId) || units[0];
 
   return (
-    <header className="w-full min-h-[4.25rem] bg-white border-b border-slate-200 flex flex-wrap lg:flex-nowrap items-center justify-between px-4 sm:px-6 lg:px-8 py-2.5 shrink-0 shadow-xs z-30 gap-3">
+    <header className="w-full min-h-[4.25rem] bg-white border-b border-slate-200 border-t-2 border-t-[#1351B4] flex flex-wrap lg:flex-nowrap items-center justify-between px-4 sm:px-6 lg:px-8 py-3 shrink-0 shadow-xs z-30 gap-3">
       
       {/* Left Side: Mobile Menu Button + Screen Title */}
       <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
         <button 
           id="btn-mobile-menu-toggle"
           onClick={onOpenMobileMenu}
-          className="lg:hidden p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0"
+          className="lg:hidden p-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 shrink-0"
           aria-label="Abrir menu"
         >
           <Menu className="w-5 h-5" />
@@ -306,20 +314,20 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="min-w-0 py-0.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">
+            <h2 className="text-base sm:text-lg font-bold text-[#0C326F] tracking-tight leading-tight">
               {currentRole === 'SERMAC_CENTRAL' && 'Gestão Central - SERMAC • Visão Geral da Rede'}
               {currentRole === 'NEPS_UNIT' && `Núcleo NEPS • ${currentUnit.name}`}
               {currentRole === 'PARTICIPANT' && 'Portal do Profissional de Saúde'}
             </h2>
-            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded uppercase tracking-wider inline-flex items-center gap-1 shrink-0">
+            <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] font-bold rounded uppercase tracking-wider inline-flex items-center gap-1.5 shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              Sessão Autenticada
+              Sessão Homologada
             </span>
           </div>
-          <p className="text-xs text-slate-500 font-normal mt-0.5 truncate hidden sm:block">
-            {currentRole === 'SERMAC_CENTRAL' && 'Secretaria Municipal de Saúde • Painel Integrado de Educação Permanente em Saúde'}
+          <p className="text-xs text-slate-600 font-medium mt-0.5 truncate hidden sm:block">
+            {currentRole === 'SERMAC_CENTRAL' && 'Prefeitura da Cidade do Recife • Secretaria de Saúde • Gerência Geral de Atenção e Informação'}
             {currentRole === 'NEPS_UNIT' && `${currentUnit.type} - Distrito ${currentUnit.district} • Coordenador(a): ${currentUser?.name || currentUnit.coordinatorName}`}
-            {currentRole === 'PARTICIPANT' && 'Registro de presença (PIN), avaliação de reação e emissão de declarações/certificados'}
+            {currentRole === 'PARTICIPANT' && 'Registro de presença (PIN/QR Code), avaliação Tracer de reação e emissão de certificados'}
           </p>
         </div>
       </div>
@@ -332,10 +340,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-header-ai-diag"
             onClick={onOpenAiDiagnosis}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors shrink-0"
+            className="bg-[#1351B4] hover:bg-[#0C326F] text-white px-3.5 py-2 rounded-lg font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer border border-[#0C326F]"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Diagnóstico IA</span>
+            <span className="hidden sm:inline">Diagnóstico IA Gemini</span>
           </button>
         )}
 
@@ -344,7 +352,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-header-new-training"
             onClick={onOpenNewAction}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors shrink-0"
+            className="bg-[#1351B4] hover:bg-[#0C326F] text-white px-3.5 py-2 rounded-lg font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer border border-[#0C326F]"
           >
             <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Novo Treinamento</span>
@@ -352,15 +360,15 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {/* User Identity Chip */}
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
-          <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5">
+          <div className="w-7 h-7 rounded bg-[#0C326F] text-white text-[11px] font-black flex items-center justify-center shrink-0">
             {currentUser?.avatarInitials || (currentRole === 'SERMAC_CENTRAL' ? 'GC' : currentRole === 'NEPS_UNIT' ? 'UN' : 'PS')}
           </div>
           <div className="hidden md:block text-left min-w-0 max-w-[160px]">
-            <p className="text-xs font-semibold text-slate-800 truncate leading-tight">
+            <p className="text-xs font-bold text-slate-800 truncate leading-tight">
               {currentUser?.name || (currentRole === 'SERMAC_CENTRAL' ? 'Gestor Central' : currentUnit.name)}
             </p>
-            <p className="text-[10px] text-slate-500 truncate leading-tight">
+            <p className="text-[10px] text-slate-500 font-medium truncate leading-tight">
               {currentUser?.email || (currentRole === 'SERMAC_CENTRAL' ? 'SERMAC' : currentUnit.type)}
             </p>
           </div>
@@ -370,11 +378,11 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="header-btn-switch-user"
           onClick={onLogout}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-bold transition-colors shrink-0 cursor-pointer"
           title="Sair da sessão e trocar de conta"
         >
-          <LogOut className="w-3.5 h-3.5 text-rose-600" />
-          <span className="hidden sm:inline">Sair / Trocar</span>
+          <LogOut className="w-3.5 h-3.5 text-rose-700" />
+          <span className="hidden sm:inline">Sair</span>
         </button>
 
       </div>

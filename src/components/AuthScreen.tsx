@@ -19,7 +19,8 @@ import {
   DEFAULT_NEPS_USERS, 
   DEFAULT_PARTICIPANT_USER 
 } from '../data/mockData';
-import { signInWithGooglePopup, signOutGoogle } from '../lib/firebase';
+import { requestGoogleIdentitySignIn } from '../lib/googleAuth';
+import { signOutGoogle } from '../lib/firebase';
 
 // Official Google Multi-color Icon
 const GoogleIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
@@ -71,8 +72,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
     setLoadingAction(actionKey);
 
     try {
-      // 1. Launch real Google OAuth popup
-      const googleUser = await signInWithGooglePopup();
+      // 1. Launch real Google OAuth popup using Google Identity Services (GSI)
+      const googleUser = await requestGoogleIdentitySignIn();
       const authenticatedEmail = googleUser.email.toLowerCase().trim();
 
       // 2. STRICT SECURITY GATE: GESTÃO CENTRAL (SERMAC)

@@ -156,114 +156,133 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
         
         {/* KPI 1: Profissionais Treinados */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Treinados na Unidade
-          </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{unitMetrics.uniqueTrained}</span>
-            <span className="text-xs text-emerald-600 font-semibold">{unitMetrics.coveragePercent}% cobertura</span>
+        <div className="bg-white p-4 sm:p-5 rounded-lg border border-slate-300 shadow-xs hover:border-slate-400 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              Treinados na Unidade
+            </p>
+            <div className="w-7 h-7 rounded bg-[#EBF2FC] text-[#0C326F] flex items-center justify-center">
+              <Users className="w-4 h-4" />
+            </div>
           </div>
-          <div className="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500" style={{ width: `${unitMetrics.coveragePercent}%` }}></div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-[#0C326F] tracking-tight">{unitMetrics.uniqueTrained}</span>
+            <span className="text-xs text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{unitMetrics.coveragePercent}% cobertura</span>
+          </div>
+          <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-[#1351B4] rounded-full" style={{ width: `${unitMetrics.coveragePercent}%` }}></div>
           </div>
         </div>
 
         {/* KPI 2: Ações de Treinamento */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Ações Educativas
-          </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{unitMetrics.totalActions}</span>
-            <span className="text-xs text-slate-400 font-medium">Meta trimestral: 6</span>
+        <div className="bg-white p-4 sm:p-5 rounded-lg border border-slate-300 shadow-xs hover:border-slate-400 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              Ações Educativas
+            </p>
+            <div className="w-7 h-7 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
+            </div>
           </div>
-          <div className="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, (unitMetrics.totalActions / 6) * 100)}%` }}></div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-[#0C326F] tracking-tight">{unitMetrics.totalActions}</span>
+            <span className="text-xs text-slate-600 font-semibold">Meta trimestral: 6</span>
+          </div>
+          <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${Math.min(100, (unitMetrics.totalActions / 6) * 100)}%` }}></div>
           </div>
         </div>
 
         {/* KPI 3: Horas Ministradas */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Carga Horária Cumprida
-          </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{unitMetrics.totalHours}h</span>
-            <span className="text-xs text-blue-600 font-medium">Acumulado</span>
+        <div className="bg-white p-4 sm:p-5 rounded-lg border border-slate-300 shadow-xs hover:border-slate-400 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              Carga Horária Cumprida
+            </p>
+            <div className="w-7 h-7 rounded bg-blue-50 text-[#1351B4] flex items-center justify-center">
+              <Clock className="w-4 h-4" />
+            </div>
           </div>
-          <div className="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-500 w-[74%]"></div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-[#0C326F] tracking-tight">{unitMetrics.totalHours}h</span>
+            <span className="text-xs text-[#1351B4] font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Acumulado</span>
+          </div>
+          <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-[#1351B4] rounded-full w-[74%]"></div>
           </div>
         </div>
 
         {/* KPI 4: Avaliação dos Alunos */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Avaliação de Reação
-          </p>
+        <div className="bg-white p-4 sm:p-5 rounded-lg border border-slate-300 shadow-xs hover:border-slate-400 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              Avaliação de Reação
+            </p>
+            <div className="w-7 h-7 rounded bg-amber-50 text-amber-700 flex items-center justify-center">
+              <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+            </div>
+          </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900 flex items-center gap-1">
-              <Star className="w-4 h-4 fill-amber-400 text-amber-400 inline" />
+            <span className="text-2xl sm:text-3xl font-black text-[#0C326F] tracking-tight flex items-center gap-1">
               {unitMetrics.avgSatisfaction}
             </span>
-            <span className="text-xs text-amber-600 font-medium">/ 5.0</span>
+            <span className="text-xs text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">/ 5.0 Tracer</span>
           </div>
-          <div className="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-amber-500 w-[96%]"></div>
+          <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-amber-500 rounded-full w-[96%]"></div>
           </div>
         </div>
 
       </div>
 
       {/* TABS NAVIGATION */}
-      <div className="bg-white p-1.5 rounded-xl border border-slate-200 shadow-xs text-xs font-semibold flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0">
+      <div className="bg-white p-1 rounded-lg border border-slate-300 shadow-xs text-xs font-bold flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-1 sm:pb-0">
           <button
             onClick={() => setActiveTab('acoes')}
-            className={`py-2 px-3 rounded-lg flex items-center gap-2 transition shrink-0 ${
+            className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'acoes'
-                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-[#1351B4] text-white font-bold shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 font-semibold'
             }`}
           >
-            <Calendar className="w-3.5 h-3.5" />
+            <Calendar className="w-4 h-4" />
             <span>Ações ({unitActions.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('indicadores')}
-            className={`py-2 px-3 rounded-lg flex items-center gap-2 transition shrink-0 ${
+            className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'indicadores'
-                ? 'bg-teal-600 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-[#0C326F] text-white font-bold shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 font-semibold'
             }`}
           >
-            <Target className="w-3.5 h-3.5" />
+            <Target className="w-4 h-4" />
             <span>Indicadores & Metas</span>
           </button>
 
           <button
             onClick={() => setActiveTab('frequencias')}
-            className={`py-2 px-3 rounded-lg flex items-center gap-2 transition shrink-0 ${
+            className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'frequencias'
-                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-[#1351B4] text-white font-bold shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 font-semibold'
             }`}
           >
-            <Users className="w-3.5 h-3.5" />
+            <Users className="w-4 h-4" />
             <span>Frequências ({unitAttendance.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('solicitar_dnc')}
-            className={`py-2 px-3 rounded-lg flex items-center gap-2 transition shrink-0 ${
+            className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'solicitar_dnc'
-                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-[#1351B4] text-white font-bold shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 font-semibold'
             }`}
           >
-            <Send className="w-3.5 h-3.5" />
+            <Send className="w-4 h-4" />
             <span>Solicitar DNC</span>
           </button>
         </div>
@@ -272,10 +291,10 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
           {onOpenCensusModal && (
             <button
               onClick={() => onOpenCensusModal(unit)}
-              className="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-3 py-1.5 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors"
+              className="bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-300 px-3 py-1.5 rounded font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Atualizar quadro de servidores ativos para o cálculo do Índice de Atividade da EP"
             >
-              <Users className="w-3.5 h-3.5 text-teal-600" />
+              <Users className="w-3.5 h-3.5 text-teal-700" />
               <span>Censo de Ativos ({unit.totalStaff})</span>
             </button>
           )}

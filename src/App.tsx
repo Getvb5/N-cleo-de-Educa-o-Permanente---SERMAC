@@ -239,7 +239,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-[#F1F5F9] text-slate-900 font-sans antialiased">
+    <div className="flex min-h-screen w-full bg-[#F0F2F5] text-slate-900 font-sans antialiased selection:bg-[#1351b4] selection:text-white">
       
       {/* Sidebar Navigation */}
       <Sidebar
