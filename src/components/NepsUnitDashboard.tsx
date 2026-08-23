@@ -226,7 +226,7 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
             <span className="text-2xl sm:text-3xl font-black text-[#0C326F] tracking-tight flex items-center gap-1">
               {unitMetrics.avgSatisfaction}
             </span>
-            <span className="text-xs text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">/ 5.0 Tracer</span>
+            <span className="text-xs text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">/ 5.0</span>
           </div>
           <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
             <div className="h-full bg-amber-500 rounded-full w-[96%]"></div>

@@ -327,7 +327,7 @@ export const Header: React.FC<HeaderProps> = ({
           <p className="text-xs text-slate-600 font-medium mt-0.5 truncate hidden sm:block">
             {currentRole === 'SERMAC_CENTRAL' && 'Prefeitura da Cidade do Recife • Secretaria de Saúde • Gerência Geral de Atenção e Informação'}
             {currentRole === 'NEPS_UNIT' && `${currentUnit.type} - Distrito ${currentUnit.district} • Coordenador(a): ${currentUser?.name || currentUnit.coordinatorName}`}
-            {currentRole === 'PARTICIPANT' && 'Registro de presença (PIN/QR Code), avaliação Tracer de reação e emissão de certificados'}
+            {currentRole === 'PARTICIPANT' && 'Registro de presença (PIN/QR Code), avaliação de reação e emissão de certificados'}
           </p>
         </div>
       </div>

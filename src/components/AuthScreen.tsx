@@ -192,9 +192,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 <span className="text-[11px] bg-white/20 text-white font-bold px-2 py-0.5 rounded">
                   PNEPS / SUS
                 </span>
-                <span className="hidden md:inline-flex text-[11px] bg-emerald-700 text-emerald-100 font-semibold px-2 py-0.5 rounded">
-                  Metodologia Tracer
-                </span>
               </div>
               <p className="text-xs text-blue-100">
                 Sistema de Gestão & Monitoramento da Educação Permanente em Saúde • SMS Recife
@@ -618,7 +615,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       <footer className="w-full text-center py-4 border-t border-slate-300 bg-white text-[11px] text-slate-600">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Prefeitura da Cidade do Recife • Secretaria de Saúde • Gerência Geral de Atenção e Informação (GGAI)</span>
-          <span className="text-[#0C326F] font-bold">Metodologia Tracer de Avaliação • PNEPS</span>
+          <span className="text-[#0C326F] font-bold">PNEPS • SUS Recife</span>
         </div>
       </footer>
 
