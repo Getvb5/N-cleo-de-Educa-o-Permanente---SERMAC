@@ -73,6 +73,54 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Google OAuth Token Verification Endpoint
+  app.post("/api/auth/google/verify", async (req, res) => {
+    try {
+      const { accessToken, idToken } = req.body;
+      
+      if (accessToken) {
+        // Verify with Google userinfo endpoint
+        const googleRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        
+        if (!googleRes.ok) {
+          return res.status(401).json({ error: "Token Google inválido ou expirado" });
+        }
+        
+        const userInfo = await googleRes.json();
+        return res.json({
+          success: true,
+          email: userInfo.email,
+          name: userInfo.name,
+          picture: userInfo.picture,
+          verifiedEmail: userInfo.email_verified
+        });
+      } else if (idToken) {
+        // Verify with Google tokeninfo endpoint
+        const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+        
+        if (!googleRes.ok) {
+          return res.status(401).json({ error: "ID Token Google inválido ou expirado" });
+        }
+        
+        const tokenInfo = await googleRes.json();
+        return res.json({
+          success: true,
+          email: tokenInfo.email,
+          name: tokenInfo.name,
+          picture: tokenInfo.picture,
+          verifiedEmail: tokenInfo.email_verified === "true" || tokenInfo.email_verified === true
+        });
+      }
+
+      return res.status(400).json({ error: "Nenhum token fornecido" });
+    } catch (err: any) {
+      console.error("Google auth verify error:", err);
+      res.status(500).json({ error: "Falha na verificação com a Google Identity API" });
+    }
+  });
+
   // AI Diagnostic & Indicators transformation for EPS
   app.post("/api/gemini/analyze-eps", async (req, res) => {
     try {
