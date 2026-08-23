@@ -53,12 +53,15 @@ interface AuthScreenProps {
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess }) => {
+  // State for Gestão Central direct input
+  const [sermacEmailInput, setSermacEmailInput] = useState<string>('getvb98@gmail.com');
+  
   // State for Unit and Participant options
   const [selectedUnitId, setSelectedUnitId] = useState<string>(units[0]?.id || 'unit-159');
   const [participantUnitId, setParticipantUnitId] = useState<string>(units[0]?.id || 'unit-159');
   const [participantName, setParticipantName] = useState('Enf. Juliana Vasconcelos');
   
-  // Custom Gmail input
+  // Custom Gmail input (modal / bottom)
   const [customEmail, setCustomEmail] = useState('');
   
   // UI Status
@@ -78,6 +81,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   ) => {
     const cleanEmail = email.trim().toLowerCase();
     setErrorMessage(null);
+
+    // Strict validation for SERMAC Central
+    if (role === 'SERMAC_CENTRAL') {
+      if (!cleanEmail || !isCentralSermacEmailAuthorized(cleanEmail)) {
+        setIsLoading(false);
+        setLoadingAction(null);
+        setShowGoogleModal(false);
+        setErrorMessage(
+          `ACESSO NEGADO: O e-mail "${cleanEmail || 'não informado'}" NÃO possui autorização para a Gestão Central (SERMAC). A Coordenação Central é restrita aos gestores homologados (getulio.batista@ufpe.br, getvb98@gmail.com, neps.ggai@gmail.com, antonio.andrade@recife.pe.gov.br).`
+        );
+        return;
+      }
+    }
+
     setIsLoading(true);
     setLoadingAction(actionKey);
 
@@ -87,10 +104,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       setShowGoogleModal(false);
 
       if (role === 'SERMAC_CENTRAL') {
-        // STRICT AUTHORIZATION CHECK FOR GESTÃO CENTRAL
+        // Final authorization safeguard
         if (!isCentralSermacEmailAuthorized(cleanEmail)) {
           setErrorMessage(
-            `Acesso Negado: O e-mail Google "${cleanEmail}" não consta no rol de gestores autorizados para a Gestão Central - SERMAC. O acesso à coordenação central é estritamente restrito a contas homologadas (ex: getulio.batista@ufpe.br, getvb98@gmail.com, neps.ggai@gmail.com, antonio.andrade@recife.pe.gov.br).`
+            `ACESSO NEGADO: O e-mail "${cleanEmail}" não consta na lista de gestores autorizados para a Gestão Central - SERMAC.`
           );
           return;
         }
@@ -273,29 +290,53 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 Coordenação Geral, matriz intersetorial da rede, diagnóstico preditivo IA, LNT e consolidação dos 8 Distritos Sanitários.
               </p>
 
-              {/* Authorized Google Accounts List */}
-              <div className="mt-5 space-y-2">
-                <div className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
+              {/* Authorized Google Accounts & Input Form */}
+              <div className="mt-5 space-y-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+                    E-mail Google / Institucional Autorizado:
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={sermacEmailInput}
+                      onChange={(e) => {
+                        setSermacEmailInput(e.target.value);
+                        setErrorMessage(null);
+                      }}
+                      placeholder="ex: getvb98@gmail.com ou getulio.batista@ufpe.br"
+                      className="w-full bg-slate-950/90 border border-blue-500/50 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-[11px] font-semibold text-slate-300 flex items-center justify-between pt-1">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    Contas Google Autorizadas:
+                    Contas Homologadas (SMS Recife):
                   </span>
-                  <span className="text-[10px] text-slate-500">1 Clique</span>
+                  <span className="text-[10px] text-slate-500">Clique para selecionar</span>
                 </div>
 
                 <div className="space-y-1.5">
                   {AUTHORIZED_SERMAC_USERS.map((usr) => {
-                    const isCurrentLoading = isLoading && loadingAction === `sermac-${usr.email}`;
+                    const isSelected = sermacEmailInput.trim().toLowerCase() === usr.email.toLowerCase();
                     return (
                       <button
-                        key={usr.email}
+                        key={usr.id}
                         type="button"
-                        onClick={() => executeGoogleLogin(usr.email, usr.name, 'SERMAC_CENTRAL', undefined, `sermac-${usr.email}`)}
-                        disabled={isLoading}
-                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-950/70 hover:bg-blue-600/20 border border-slate-800 hover:border-blue-500/60 text-left transition-all group/btn disabled:opacity-50"
+                        onClick={() => {
+                          setSermacEmailInput(usr.email);
+                          setErrorMessage(null);
+                        }}
+                        className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all group/btn ${
+                          isSelected 
+                            ? 'bg-blue-600/30 border-2 border-blue-400 shadow-md' 
+                            : 'bg-slate-950/70 hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40'
+                        }`}
                       >
                         <div className="min-w-0 pr-2">
-                          <span className="text-xs font-semibold text-slate-200 group-hover/btn:text-white block truncate">
+                          <span className={`text-xs font-semibold block truncate ${isSelected ? 'text-white font-bold' : 'text-slate-200'}`}>
                             {usr.name}
                           </span>
                           <span className="text-[11px] font-mono text-blue-400 block truncate">
@@ -304,10 +345,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                         </div>
 
                         <div className="shrink-0 flex items-center gap-1.5">
-                          {isCurrentLoading ? (
-                            <span className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          {isSelected ? (
+                            <span className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold">
+                              ✓
+                            </span>
                           ) : (
-                            <GoogleIcon className="w-4 h-4" />
+                            <GoogleIcon className="w-4 h-4 opacity-70 group-hover/btn:opacity-100" />
                           )}
                         </div>
                       </button>
@@ -321,15 +364,28 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
               <button
                 type="button"
                 onClick={() => {
-                  setModalTargetRole('SERMAC_CENTRAL');
-                  setShowGoogleModal(true);
+                  const targetEmail = sermacEmailInput.trim().toLowerCase();
+                  const matched = AUTHORIZED_SERMAC_USERS.find(u => u.email.toLowerCase() === targetEmail);
+                  executeGoogleLogin(
+                    targetEmail, 
+                    matched?.name || 'Gestor SERMAC', 
+                    'SERMAC_CENTRAL', 
+                    undefined, 
+                    `sermac-direct`
+                  );
                 }}
-                disabled={isLoading}
+                disabled={isLoading || !sermacEmailInput.trim()}
                 className="w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <GoogleIcon className="w-4 h-4" />
-                <span>Entrar na Gestão Central (Google)</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                {isLoading && loadingAction === 'sermac-direct' ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <GoogleIcon className="w-4 h-4" />
+                    <span>Autenticar Gestão Central (Google)</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
               </button>
             </div>
 
