@@ -31,18 +31,22 @@ interface ParticipantPortalProps {
   actions: TrainingAction[];
   attendance: AttendanceRecord[];
   units: HealthUnit[];
+  cnesProfessionals?: import('../types').CnesProfessional[];
   onRegisterCheckin: (record: Omit<AttendanceRecord, 'id' | 'certificateCode'>) => void;
   onSaveFeedback: (attendanceId: string, feedback: FeedbackData) => void;
   onOpenCertificate: (record: AttendanceRecord) => void;
+  onOpenCnesModal?: () => void;
 }
 
 export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
   actions = [],
   attendance = [],
   units = [],
+  cnesProfessionals = [],
   onRegisterCheckin,
   onSaveFeedback,
-  onOpenCertificate
+  onOpenCertificate,
+  onOpenCnesModal
 }) => {
   // Check-in Form State
   const [pin, setPin] = useState('');
@@ -52,6 +56,7 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
   const [regNumber, setRegNumber] = useState('');
   const [category, setCategory] = useState<ProfessionalCategory>('Enfermeiro(a)');
   const [participantUnitId, setParticipantUnitId] = useState(units[0]?.id || '');
+  const [cnesMatch, setCnesMatch] = useState<import('../types').CnesProfessional | null>(null);
   
   // Feedback Form State
   const [activeCheckinRecord, setActiveCheckinRecord] = useState<AttendanceRecord | null>(null);
@@ -305,6 +310,42 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
+                  CPF <span className="text-red-500">*</span> (com validação CNES)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={cpf}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCpf(val);
+                      // Auto-lookup in CNES database
+                      const cleanVal = val.replace(/\D/g, '');
+                      const match = cnesProfessionals.find(p => p.cpf.replace(/\D/g, '') === cleanVal || p.cpf === val);
+                      if (match) {
+                        setCnesMatch(match);
+                        setParticipantName(match.name);
+                        setCategory(match.professionalCategory);
+                        setRegNumber(match.councilRegistration || `CNS-${match.cns.slice(-6)}`);
+                        setParticipantUnitId(match.unitId);
+                      } else {
+                        setCnesMatch(null);
+                      }
+                    }}
+                    placeholder="000.000.000-00"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                  />
+                  {cnesMatch && (
+                    <span className="absolute right-2 top-2 text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-1 border border-emerald-300">
+                      <ShieldCheck className="w-3 h-3" /> CNES Ativo
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
                   Seu Nome Completo <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -319,27 +360,13 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  CPF <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={cpf}
-                  onChange={(e) => setCpf(e.target.value)}
-                  placeholder="000.000.000-00"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  Matrícula SUS / Funcional
+                  Matrícula SUS / Registro de Classe
                 </label>
                 <input
                   type="text"
                   value={regNumber}
                   onChange={(e) => setRegNumber(e.target.value)}
-                  placeholder="Ex: MATR-9921"
+                  placeholder="Ex: COREN-PE 123456"
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
                 />
               </div>
@@ -358,6 +385,26 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                   ))}
                 </select>
               </div>
+
+              {cnesMatch && (
+                <div className="sm:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-2.5 flex items-center justify-between text-[11px] text-blue-900">
+                  <div className="flex items-center gap-2">
+                    <Building className="w-4 h-4 text-blue-600" />
+                    <span>
+                      Vínculo CNES detectado: <strong>{cnesMatch.cboDescription}</strong> ({cnesMatch.weeklyHours}h) • {cnesMatch.unitName}
+                    </span>
+                  </div>
+                  {onOpenCnesModal && (
+                    <button
+                      type="button"
+                      onClick={onOpenCnesModal}
+                      className="text-blue-700 font-bold hover:underline"
+                    >
+                      Ver detalhes CNES
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="sm:col-span-2">
                 <label className="block text-slate-700 font-semibold mb-1">

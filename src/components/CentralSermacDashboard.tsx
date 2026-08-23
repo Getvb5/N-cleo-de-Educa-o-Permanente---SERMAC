@@ -65,6 +65,7 @@ interface CentralSermacDashboardProps {
   onSelectAction: (action: TrainingAction) => void;
   onUpdateDncStatus: (id: string, status: TrainingNeedDNC['status']) => void;
   onOpenCensusModal?: (unit: HealthUnit) => void;
+  onOpenCnesModal?: (unitId?: string) => void;
 }
 
 const COLORS = ['#3b82f6', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#0ea5e9', '#14b8a6', '#f97316'];
@@ -79,7 +80,8 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
   onOpenPaepsPlan,
   onSelectAction,
   onUpdateDncStatus,
-  onOpenCensusModal
+  onOpenCensusModal,
+  onOpenCnesModal
 }) => {
   const [activeTab, setActiveTab] = useState<'indicadores_oficiais' | 'indicadores' | 'quem_treina_quem' | 'unidades' | 'dnc' | 'acoes'>('indicadores_oficiais');
   const [searchTerm, setSearchTerm] = useState('');
@@ -378,6 +380,17 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
         </button>
 
         <div className="ml-auto flex items-center gap-2 pr-1">
+          {onOpenCnesModal && (
+            <button
+              onClick={() => onOpenCnesModal()}
+              className="text-xs font-semibold text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md border border-blue-200 transition flex items-center gap-1.5 cursor-pointer"
+              title="Gerenciar vínculos e sincronizar base de dados CNES / DATASUS"
+            >
+              <Building2 className="w-3.5 h-3.5 text-blue-600" />
+              <span>Base CNES</span>
+            </button>
+          )}
+
           <button
             onClick={onOpenPaepsPlan}
             className="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md border border-slate-200 transition flex items-center gap-1.5"
@@ -724,12 +737,13 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
               <thead>
                 <tr className="text-[10px] font-bold text-slate-400 uppercase border-b border-slate-100">
                   <th className="pb-2 font-bold">Unidade</th>
-                  <th className="pb-2 font-bold">Tipo / Distrito</th>
+                  <th className="pb-2 font-bold">CNES / Distrito</th>
                   <th className="pb-2 font-bold text-center">Quadro</th>
                   <th className="pb-2 font-bold text-center">Ações</th>
                   <th className="pb-2 font-bold text-center">Horas</th>
                   <th className="pb-2 font-bold text-center">Treinados</th>
                   <th className="pb-2 font-bold text-right">Cobertura</th>
+                  <th className="pb-2 font-bold text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="text-xs text-slate-600 divide-y divide-slate-100">
@@ -742,8 +756,8 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
                       <span>{unit.name}</span>
                     </td>
                     <td className="py-2.5 text-slate-500">
-                      <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono text-[10px]">
-                        {unit.type}
+                      <span className="bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold border border-blue-200">
+                        CNES: {unit.cnes || '0002135'}
                       </span>
                       <span className="text-slate-400 text-[10px] ml-1.5">{unit.district}</span>
                     </td>
@@ -769,6 +783,18 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
                           ></div>
                         </div>
                       </div>
+                    </td>
+                    <td className="py-2.5 text-center">
+                      {onOpenCnesModal && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenCnesModal(unit.id)}
+                          className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] rounded border border-blue-200 transition cursor-pointer"
+                          title="Abrir base CNES desta unidade"
+                        >
+                          Ver CNES
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

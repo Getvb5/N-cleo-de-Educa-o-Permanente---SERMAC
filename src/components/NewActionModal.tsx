@@ -31,6 +31,7 @@ import {
 interface NewActionModalProps {
   units: HealthUnit[];
   selectedUnitId: string;
+  actionToEdit?: TrainingAction | null;
   onClose: () => void;
   onSave: (action: TrainingAction) => void;
 }
@@ -38,37 +39,42 @@ interface NewActionModalProps {
 export const NewActionModal: React.FC<NewActionModalProps> = ({
   units,
   selectedUnitId,
+  actionToEdit = null,
   onClose,
   onSave
 }) => {
-  const [unitId, setUnitId] = useState(selectedUnitId || (units[0]?.id || ''));
-  const [title, setTitle] = useState('');
-  const [thematicAxis, setThematicAxis] = useState<ThematicAxis>(ALL_THEMATIC_AXES[0]);
-  const [description, setDescription] = useState('');
-  const [instructorName, setInstructorName] = useState('');
-  const [instructorCategory, setInstructorCategory] = useState<InstructorCategory>(ALL_INSTRUCTOR_CATEGORIES[0]);
-  const [instructorAffiliation, setInstructorAffiliation] = useState('');
-  const [targetCategories, setTargetCategories] = useState<ProfessionalCategory[]>([
-    'Enfermeiro(a)',
-    'Técnico(a) de Enfermagem'
-  ]);
-  const [modality, setModality] = useState<Modality>('Presencial');
-  const [methodology, setMethodology] = useState<ActiveMethodology>(ALL_METHODOLOGIES[0]);
-  const [workloadHours, setWorkloadHours] = useState(4);
-  const [dateStart, setDateStart] = useState(new Date().toISOString().split('T')[0]);
-  const [timeSchedule, setTimeSchedule] = useState('08:30 às 12:30');
-  const [location, setLocation] = useState('Auditório da Unidade');
-  const [maxSeats, setMaxSeats] = useState(30);
-  const [plannedAttendeesCount, setPlannedAttendeesCount] = useState(30);
-  const [eligibleProfessionalsCount, setEligibleProfessionalsCount] = useState(35);
-  const [isEsrLinked, setIsEsrLinked] = useState(false);
-  const [esrLinkType, setEsrLinkType] = useState('Parceria Pedagógica ESR');
+  const isEditing = Boolean(actionToEdit);
+
+  const [unitId, setUnitId] = useState(actionToEdit?.unitId || selectedUnitId || (units[0]?.id || ''));
+  const [title, setTitle] = useState(actionToEdit?.title || '');
+  const [thematicAxis, setThematicAxis] = useState<ThematicAxis>(actionToEdit?.thematicAxis || ALL_THEMATIC_AXES[0]);
+  const [description, setDescription] = useState(actionToEdit?.description || '');
+  const [instructorName, setInstructorName] = useState(actionToEdit?.instructorName || '');
+  const [instructorCategory, setInstructorCategory] = useState<InstructorCategory>(actionToEdit?.instructorCategory || ALL_INSTRUCTOR_CATEGORIES[0]);
+  const [instructorAffiliation, setInstructorAffiliation] = useState(actionToEdit?.instructorAffiliation || '');
+  const [targetCategories, setTargetCategories] = useState<ProfessionalCategory[]>(
+    actionToEdit?.targetCategories || [
+      'Enfermeiro(a)',
+      'Técnico(a) de Enfermagem'
+    ]
+  );
+  const [modality, setModality] = useState<Modality>(actionToEdit?.modality || 'Presencial');
+  const [methodology, setMethodology] = useState<ActiveMethodology>(actionToEdit?.methodology || ALL_METHODOLOGIES[0]);
+  const [workloadHours, setWorkloadHours] = useState(actionToEdit?.workloadHours || 4);
+  const [dateStart, setDateStart] = useState(actionToEdit?.dateStart || new Date().toISOString().split('T')[0]);
+  const [timeSchedule, setTimeSchedule] = useState(actionToEdit?.timeSchedule || '08:30 às 12:30');
+  const [location, setLocation] = useState(actionToEdit?.location || 'Auditório da Unidade');
+  const [maxSeats, setMaxSeats] = useState(actionToEdit?.maxSeats || 30);
+  const [plannedAttendeesCount, setPlannedAttendeesCount] = useState(actionToEdit?.plannedAttendeesCount || actionToEdit?.maxSeats || 30);
+  const [eligibleProfessionalsCount, setEligibleProfessionalsCount] = useState(actionToEdit?.eligibleProfessionalsCount || 35);
+  const [isEsrLinked, setIsEsrLinked] = useState(Boolean(actionToEdit?.isEsrLinked));
+  const [esrLinkType, setEsrLinkType] = useState(actionToEdit?.esrLinkType || 'Parceria Pedagógica ESR');
 
   // AI Generation State
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [syllabus, setSyllabus] = useState<string[]>([]);
-  const [competencies, setCompetencies] = useState<string[]>([]);
-  const [materials, setMaterials] = useState<string[]>([]);
+  const [syllabus, setSyllabus] = useState<string[]>(actionToEdit?.syllabus || []);
+  const [competencies, setCompetencies] = useState<string[]>(actionToEdit?.competenciesToDevelop || []);
+  const [materials, setMaterials] = useState<string[]>(actionToEdit?.materialsNeeded || []);
   const [aiGeneratedSuccess, setAiGeneratedSuccess] = useState(false);
 
   const selectedUnit = units.find(u => u.id === unitId) || units[0];
@@ -165,6 +171,38 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
       return;
     }
 
+    if (actionToEdit) {
+      const updatedAction: TrainingAction = {
+        ...actionToEdit,
+        title,
+        thematicAxis,
+        description: description || actionToEdit.description || `Capacitação permanente sobre ${title} para qualificação do cuidado no SUS.`,
+        unitId,
+        unitName: selectedUnit?.name || actionToEdit.unitName,
+        instructorName,
+        instructorCategory,
+        instructorAffiliation: instructorAffiliation || selectedUnit?.name,
+        targetCategories,
+        modality,
+        methodology,
+        workloadHours: Number(workloadHours),
+        dateStart,
+        dateEnd: dateStart,
+        timeSchedule,
+        location,
+        maxSeats: Number(maxSeats),
+        plannedAttendeesCount: Number(plannedAttendeesCount) || Number(maxSeats) || actionToEdit.plannedAttendeesCount || 30,
+        eligibleProfessionalsCount: Number(eligibleProfessionalsCount) || actionToEdit.eligibleProfessionalsCount || 35,
+        isEsrLinked: Boolean(isEsrLinked),
+        esrLinkType: isEsrLinked ? esrLinkType : undefined,
+        syllabus: syllabus.length > 0 ? syllabus : actionToEdit.syllabus,
+        competenciesToDevelop: competencies.length > 0 ? competencies : actionToEdit.competenciesToDevelop,
+        materialsNeeded: materials.length > 0 ? materials : actionToEdit.materialsNeeded
+      };
+      onSave(updatedAction);
+      return;
+    }
+
     const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
     const actionCode = `EPS-2026-${Math.floor(100 + Math.random() * 900)}`;
 
@@ -225,9 +263,13 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
               <BookOpen className="w-5 h-5 text-blue-300" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Cadastrar Nova Ação de Educação Permanente (EPS)</h2>
+              <h2 className="text-lg font-bold">
+                {isEditing ? `Editar Ação de Educação Permanente (${actionToEdit?.code})` : 'Cadastrar Nova Ação de Educação Permanente (EPS)'}
+              </h2>
               <p className="text-xs text-blue-200">
-                Planejamento pedagógico, público-alvo, facilitadores e geração de código de presença
+                {isEditing 
+                  ? 'Atualize o planejamento pedagógico, público-alvo, facilitadores ou carga horária'
+                  : 'Planejamento pedagógico, público-alvo, facilitadores e geração de código de presença'}
               </p>
             </div>
           </div>
@@ -647,7 +689,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
               className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-lg shadow-md hover:shadow-lg transition flex items-center space-x-2"
             >
               <Check className="w-4 h-4" />
-              <span>Pactuar e Salvar Ação EPS</span>
+              <span>{isEditing ? 'Salvar Alterações da Ação' : 'Pactuar e Salvar Ação EPS'}</span>
             </button>
           </div>
 

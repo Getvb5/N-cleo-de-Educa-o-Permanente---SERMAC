@@ -7,7 +7,8 @@ import {
   TrainingNeedDNC,
   UnitStaffCensus,
   FeedbackData,
-  AuthUser 
+  AuthUser,
+  CnesProfessional 
 } from './types';
 import { 
   getStoredHealthUnits, 
@@ -26,6 +27,7 @@ import {
   DEFAULT_NEPS_USERS,
   DEFAULT_PARTICIPANT_USER
 } from './data/mockData';
+import { generateMockCnesDatabase } from './data/cnesDatabase';
 import { Sidebar, Header } from './components/Navbar';
 import { CentralSermacDashboard } from './components/CentralSermacDashboard';
 import { NepsUnitDashboard } from './components/NepsUnitDashboard';
@@ -37,6 +39,7 @@ import { AiDiagnosisModal } from './components/AiDiagnosisModal';
 import { PaepsPlanModal } from './components/PaepsPlanModal';
 import { WorkforceCensusModal } from './components/WorkforceCensusModal';
 import { CancelActionModal } from './components/CancelActionModal';
+import { CnesIntegrationModal } from './components/CnesIntegrationModal';
 import { AuthScreen } from './components/AuthScreen';
 import { signOutGoogle } from './lib/firebase';
 
@@ -55,15 +58,40 @@ export default function App() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => getStoredAttendance());
   const [dncList, setDncList] = useState<TrainingNeedDNC[]>(() => getStoredDNC());
   const [censusList, setCensusList] = useState<UnitStaffCensus[]>(() => loadStoredCensus());
+  
+  // CNES Database State
+  const [cnesProfessionals, setCnesProfessionals] = useState<CnesProfessional[]>(() => {
+    const stored = localStorage.getItem('eps_cnes_professionals');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        // fallback
+      }
+    }
+    return generateMockCnesDatabase(getStoredHealthUnits());
+  });
 
   // Modal States
   const [isNewActionOpen, setIsNewActionOpen] = useState(false);
+  const [actionToEdit, setActionToEdit] = useState<TrainingAction | null>(null);
   const [isAiDiagnosisOpen, setIsAiDiagnosisOpen] = useState(false);
   const [isPaepsPlanOpen, setIsPaepsPlanOpen] = useState(false);
   const [selectedActionDetails, setSelectedActionDetails] = useState<TrainingAction | null>(null);
   const [selectedCertificateRecord, setSelectedCertificateRecord] = useState<AttendanceRecord | null>(null);
   const [selectedCensusUnit, setSelectedCensusUnit] = useState<HealthUnit | null>(null);
   const [selectedActionToCancel, setSelectedActionToCancel] = useState<TrainingAction | null>(null);
+  const [isCnesModalOpen, setIsCnesModalOpen] = useState(false);
+  const [cnesTargetUnitId, setCnesTargetUnitId] = useState<string | undefined>(undefined);
+
+  // Sync to LocalStorage on changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('eps_cnes_professionals', JSON.stringify(cnesProfessionals));
+    } catch (e) {
+      // quota or private mode
+    }
+  }, [cnesProfessionals]);
 
   // Sync to LocalStorage on changes
   useEffect(() => {
@@ -117,10 +145,32 @@ export default function App() {
   const currentUnit = units.find(u => u.id === selectedUnitId) || units[0];
 
   // Handlers
-  const handleSaveNewAction = (newAction: TrainingAction) => {
-    const updated = [newAction, ...actions];
-    setActions(updated);
+  const handleSaveAction = (savedAction: TrainingAction) => {
+    setActions(prev => {
+      const exists = prev.some(a => a.id === savedAction.id);
+      if (exists) {
+        return prev.map(a => a.id === savedAction.id ? savedAction : a);
+      }
+      return [savedAction, ...prev];
+    });
     setIsNewActionOpen(false);
+    setActionToEdit(null);
+    if (selectedActionDetails && selectedActionDetails.id === savedAction.id) {
+      setSelectedActionDetails(savedAction);
+    }
+  };
+
+  const handleEditAction = (action: TrainingAction) => {
+    setActionToEdit(action);
+    setIsNewActionOpen(true);
+  };
+
+  const handleDeleteAction = (actionId: string) => {
+    setActions(prev => prev.filter(a => a.id !== actionId));
+    setAttendance(prev => prev.filter(att => att.actionId !== actionId));
+    if (selectedActionDetails && selectedActionDetails.id === actionId) {
+      setSelectedActionDetails(null);
+    }
   };
 
   const handleUpdateActionStatus = (actionId: string, newStatus: TrainingAction['status']) => {
@@ -186,6 +236,85 @@ export default function App() {
     setSelectedCensusUnit(null);
   };
 
+  const handleSyncUnitCnes = (unitId: string, syncedProfessionals: CnesProfessional[]) => {
+    // 1. Update professionals list for this unit
+    setCnesProfessionals(prev => {
+      const otherUnitProfs = prev.filter(p => p.unitId !== unitId);
+      return [...otherUnitProfs, ...syncedProfessionals];
+    });
+
+    // 2. Count active professionals by category
+    const breakdown: Partial<Record<import('./types').ProfessionalCategory, number>> = {};
+    syncedProfessionals.filter(p => p.status === 'Ativo').forEach(p => {
+      breakdown[p.professionalCategory] = (breakdown[p.professionalCategory] || 0) + 1;
+    });
+    const totalActive = Object.values(breakdown).reduce((acc, count) => acc + (count || 0), 0);
+
+    // 3. Update HealthUnit object
+    const targetUnit = units.find(u => u.id === unitId);
+    if (targetUnit) {
+      setUnits(prev => prev.map(u => {
+        if (u.id === unitId) {
+          return {
+            ...u,
+            totalStaff: totalActive || u.totalStaff,
+            activeStaffBreakdown: Object.keys(breakdown).length > 0 ? breakdown : u.activeStaffBreakdown,
+            cnesSyncedAt: new Date().toISOString()
+          };
+        }
+        return u;
+      }));
+
+      // 4. Update or create Census Record
+      const newCensus: UnitStaffCensus = {
+        id: `census-cnes-${unitId}-${Date.now()}`,
+        unitId,
+        unitName: targetUnit.name,
+        period: 'Agosto/2026',
+        totalActiveStaff: totalActive || targetUnit.totalStaff,
+        breakdown: Object.keys(breakdown).length > 0 ? breakdown : targetUnit.activeStaffBreakdown || {},
+        notes: `Sincronizado automaticamente com o barramento DATASUS / CNES (${targetUnit.cnes || 'Oficial'}).`,
+        submittedBy: 'Sincronizador CNES / DATASUS',
+        submittedAt: new Date().toISOString(),
+        verifiedBySermac: true
+      };
+
+      setCensusList(prev => {
+        const idx = prev.findIndex(c => c.unitId === unitId);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = newCensus;
+          return next;
+        }
+        return [...prev, newCensus];
+      });
+    }
+  };
+
+  const handleAddCnesProfessional = (newProf: CnesProfessional) => {
+    setCnesProfessionals(prev => [newProf, ...prev]);
+
+    // Recalculate unit staff breakdown
+    const unitId = newProf.unitId;
+    const targetUnit = units.find(u => u.id === unitId);
+    if (targetUnit) {
+      setUnits(prev => prev.map(u => {
+        if (u.id === unitId) {
+          const breakdown = { ...(u.activeStaffBreakdown || {}) };
+          breakdown[newProf.professionalCategory] = (breakdown[newProf.professionalCategory] || 0) + 1;
+          const totalStaff = Object.values(breakdown).reduce<number>((acc, v) => acc + (Number(v) || 0), 0);
+          return {
+            ...u,
+            totalStaff: totalStaff || u.totalStaff + 1,
+            activeStaffBreakdown: breakdown,
+            cnesSyncedAt: new Date().toISOString()
+          };
+        }
+        return u;
+      }));
+    }
+  };
+
   const handleAddAttendance = (recordData: Omit<AttendanceRecord, 'id' | 'certificateCode'>) => {
     const certCode = `CERT-${recordData.actionCode}-${Math.floor(1000 + Math.random() * 9000)}`;
     const newRecord: AttendanceRecord = {
@@ -226,6 +355,20 @@ export default function App() {
     setDncList(prev => [newDnc, ...prev]);
   };
 
+  const handleAddLntNeed = (newLntData: Omit<TrainingNeedDNC, 'id' | 'dateReported'>) => {
+    const newDnc: TrainingNeedDNC = {
+      ...newLntData,
+      id: `dnc-lnt-${Date.now()}`,
+      dateReported: new Date().toISOString().split('T')[0],
+      status: newLntData.status || 'Aprovado_LNT'
+    };
+    setDncList(prev => [newDnc, ...prev]);
+  };
+
+  const handleDeleteDnc = (dncId: string) => {
+    setDncList(prev => prev.filter(d => d.id !== dncId));
+  };
+
   const handleUpdateDncStatus = (dncId: string, status: TrainingNeedDNC['status']) => {
     setDncList(prev => prev.map(d => d.id === dncId ? { ...d, status } : d));
   };
@@ -248,7 +391,10 @@ export default function App() {
         selectedUnitId={selectedUnitId}
         currentUser={currentUser}
         onLogout={handleLogout}
-        onOpenNewAction={() => setIsNewActionOpen(true)}
+        onOpenNewAction={() => {
+          setActionToEdit(null);
+          setIsNewActionOpen(true);
+        }}
         onOpenAiDiagnosis={() => setIsAiDiagnosisOpen(true)}
         onOpenPaepsPlan={() => setIsPaepsPlanOpen(true)}
         mobileMenuOpen={mobileMenuOpen}
@@ -265,7 +411,10 @@ export default function App() {
           selectedUnitId={selectedUnitId}
           currentUser={currentUser}
           onLogout={handleLogout}
-          onOpenNewAction={() => setIsNewActionOpen(true)}
+          onOpenNewAction={() => {
+            setActionToEdit(null);
+            setIsNewActionOpen(true);
+          }}
           onOpenAiDiagnosis={() => setIsAiDiagnosisOpen(true)}
           onOpenPaepsPlan={() => setIsPaepsPlanOpen(true)}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
@@ -287,6 +436,10 @@ export default function App() {
               onSelectAction={(action) => setSelectedActionDetails(action)}
               onUpdateDncStatus={handleUpdateDncStatus}
               onOpenCensusModal={(unit) => setSelectedCensusUnit(unit)}
+              onOpenCnesModal={(unitId) => {
+                setCnesTargetUnitId(unitId);
+                setIsCnesModalOpen(true);
+              }}
             />
           )}
 
@@ -297,12 +450,21 @@ export default function App() {
               attendance={attendance}
               dncList={dncList}
               censusList={censusList}
-              onOpenNewAction={() => setIsNewActionOpen(true)}
+              onOpenNewAction={() => {
+                setActionToEdit(null);
+                setIsNewActionOpen(true);
+              }}
               onSelectAction={(action) => setSelectedActionDetails(action)}
               onOpenCertificate={(record) => setSelectedCertificateRecord(record)}
               onSubmitDNC={handleSubmitDNC}
               onOpenCensusModal={(unit) => setSelectedCensusUnit(unit)}
               onOpenCancelModal={(action) => setSelectedActionToCancel(action)}
+              onEditAction={handleEditAction}
+              onDeleteAction={handleDeleteAction}
+              onOpenCnesModal={(unitId) => {
+                setCnesTargetUnitId(unitId || currentUnit.id);
+                setIsCnesModalOpen(true);
+              }}
             />
           )}
 
@@ -311,9 +473,14 @@ export default function App() {
               actions={actions}
               attendance={attendance}
               units={units}
+              cnesProfessionals={cnesProfessionals}
               onRegisterCheckin={handleAddAttendance}
               onSaveFeedback={handleSaveFeedback}
               onOpenCertificate={(record) => setSelectedCertificateRecord(record)}
+              onOpenCnesModal={() => {
+                setCnesTargetUnitId(undefined);
+                setIsCnesModalOpen(true);
+              }}
             />
           )}
 
@@ -337,8 +504,12 @@ export default function App() {
         <NewActionModal
           units={units}
           selectedUnitId={selectedUnitId}
-          onClose={() => setIsNewActionOpen(false)}
-          onSave={handleSaveNewAction}
+          actionToEdit={actionToEdit}
+          onClose={() => {
+            setIsNewActionOpen(false);
+            setActionToEdit(null);
+          }}
+          onSave={handleSaveAction}
         />
       )}
 
@@ -351,6 +522,8 @@ export default function App() {
           onUpdateStatus={handleUpdateActionStatus}
           onAddAttendance={handleAddAttendance}
           onOpenCertificate={(record) => setSelectedCertificateRecord(record)}
+          onEditAction={handleEditAction}
+          onDeleteAction={handleDeleteAction}
         />
       )}
 
@@ -377,6 +550,9 @@ export default function App() {
           actions={actions}
           dncList={dncList}
           onClose={() => setIsPaepsPlanOpen(false)}
+          onAddLntNeed={handleAddLntNeed}
+          onUpdateDncStatus={handleUpdateDncStatus}
+          onDeleteDnc={handleDeleteDnc}
         />
       )}
 
@@ -384,6 +560,7 @@ export default function App() {
         <WorkforceCensusModal
           unit={selectedCensusUnit}
           currentCensus={censusList.find(c => c.unitId === selectedCensusUnit.id)}
+          cnesProfessionals={cnesProfessionals}
           onClose={() => setSelectedCensusUnit(null)}
           onSaveCensus={handleSaveCensus}
         />
@@ -394,6 +571,20 @@ export default function App() {
           action={selectedActionToCancel}
           onClose={() => setSelectedActionToCancel(null)}
           onConfirmCancel={handleConfirmCancelAction}
+        />
+      )}
+
+      {isCnesModalOpen && (
+        <CnesIntegrationModal
+          units={units}
+          selectedUnitId={cnesTargetUnitId}
+          professionals={cnesProfessionals}
+          onClose={() => {
+            setIsCnesModalOpen(false);
+            setCnesTargetUnitId(undefined);
+          }}
+          onSyncUnitCnes={handleSyncUnitCnes}
+          onAddProfessional={handleAddCnesProfessional}
         />
       )}
 

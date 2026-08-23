@@ -32,7 +32,10 @@ import {
   QrCode,
   Target,
   UserCheck,
-  Ban
+  Ban,
+  Pencil,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 
 interface NepsUnitDashboardProps {
@@ -47,6 +50,9 @@ interface NepsUnitDashboardProps {
   onSubmitDNC: (dnc: Omit<TrainingNeedDNC, 'id' | 'dateReported' | 'status'>) => void;
   onOpenCensusModal?: (unit: HealthUnit) => void;
   onOpenCancelModal?: (action: TrainingAction) => void;
+  onEditAction?: (action: TrainingAction) => void;
+  onDeleteAction?: (actionId: string) => void;
+  onOpenCnesModal?: (unitId?: string) => void;
 }
 
 export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
@@ -60,11 +66,15 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
   onOpenCertificate,
   onSubmitDNC,
   onOpenCensusModal,
-  onOpenCancelModal
+  onOpenCancelModal,
+  onEditAction,
+  onDeleteAction,
+  onOpenCnesModal
 }) => {
   const [activeTab, setActiveTab] = useState<'acoes' | 'indicadores' | 'frequencias' | 'solicitar_dnc'>('acoes');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'planejada' | 'em_andamento' | 'concluida' | 'cancelada'>('todos');
   const [searchTerm, setSearchTerm] = useState('');
+  const [actionToDelete, setActionToDelete] = useState<TrainingAction | null>(null);
 
   // DNC Form States
   const [dncTheme, setDncTheme] = useState('');
@@ -288,6 +298,17 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-2 ml-auto shrink-0">
+          {onOpenCnesModal && (
+            <button
+              onClick={() => onOpenCnesModal(unit.id)}
+              className="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-300 px-3 py-1.5 rounded font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Consultar e sincronizar profissionais ativos na base CNES / DATASUS"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-blue-700" />
+              <span>Base CNES ({unit.cnes || '0002135'})</span>
+            </button>
+          )}
+
           {onOpenCensusModal && (
             <button
               onClick={() => onOpenCensusModal(unit)}
@@ -372,7 +393,7 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
                 <div
                   key={action.id}
                   onClick={() => onSelectAction(action)}
-                  className="bg-white hover:bg-blue-50/40 border border-slate-200 hover:border-blue-300 p-4 rounded-xl transition cursor-pointer shadow-xs space-y-3"
+                  className="bg-white hover:bg-blue-50/30 border border-slate-200 hover:border-blue-300 p-4 rounded-xl transition cursor-pointer shadow-xs space-y-3 relative group"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
@@ -384,12 +405,45 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
                       </span>
                     </div>
 
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
-                      action.status === 'concluida' ? 'bg-emerald-100 text-emerald-800' :
-                      action.status === 'em_andamento' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'
-                    }`}>
-                      {action.status.replace('_', ' ')}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
+                        action.status === 'concluida' ? 'bg-emerald-100 text-emerald-800' :
+                        action.status === 'em_andamento' ? 'bg-blue-100 text-blue-800' :
+                        action.status === 'cancelada' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {action.status.replace('_', ' ')}
+                      </span>
+
+                      {/* Quick Action Buttons */}
+                      <div className="flex items-center gap-1 ml-1" onClick={(e) => e.stopPropagation()}>
+                        {onEditAction && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditAction(action);
+                            }}
+                            className="p-1 rounded bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition"
+                            title="Editar Ação"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onDeleteAction && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionToDelete(action);
+                            }}
+                            className="p-1 rounded bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition"
+                            title="Excluir Ação"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -639,6 +693,61 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
           Novo Treinamento
         </button>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {actionToDelete && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-100 text-rose-600 rounded-xl">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Excluir Ação de Capacitação</h3>
+                <p className="text-xs text-slate-500">Esta ação não poderá ser desfeita.</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5 text-xs text-slate-700">
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-bold bg-slate-200 text-slate-800 px-2 py-0.5 rounded text-[11px]">
+                  {actionToDelete.code}
+                </span>
+                <span className="text-slate-500">{actionToDelete.dateStart}</span>
+              </div>
+              <p className="font-bold text-slate-900">{actionToDelete.title}</p>
+              <p className="text-slate-500">Docente: {actionToDelete.instructorName} • {actionToDelete.workloadHours}h</p>
+            </div>
+
+            <p className="text-xs text-rose-600">
+              Tem certeza que deseja remover esta ação educativa do planejamento do NEPS?
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActionToDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteAction) {
+                    onDeleteAction(actionToDelete.id);
+                  }
+                  setActionToDelete(null);
+                }}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Confirmar Exclusão</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

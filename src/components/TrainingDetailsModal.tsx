@@ -18,7 +18,10 @@ import {
   Check, 
   Download,
   Share2,
-  AlertCircle
+  AlertCircle,
+  Pencil,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 
 interface TrainingDetailsModalProps {
@@ -31,6 +34,8 @@ interface TrainingDetailsModalProps {
   onAddManualAttendance?: (record: Omit<AttendanceRecord, 'id' | 'certificateCode'>) => void;
   onAddAttendance?: (record: Omit<AttendanceRecord, 'id' | 'certificateCode'>) => void;
   onOpenCertificate: (record: AttendanceRecord) => void;
+  onEditAction?: (action: TrainingAction) => void;
+  onDeleteAction?: (actionId: string) => void;
 }
 
 export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
@@ -42,10 +47,13 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
   onUpdateStatus,
   onAddManualAttendance,
   onAddAttendance,
-  onOpenCertificate
+  onOpenCertificate,
+  onEditAction,
+  onDeleteAction
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'attendance' | 'feedback' | 'pin'>('info');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Manual attendee form
   const [name, setName] = useState('');
@@ -129,9 +137,9 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="bg-slate-900 p-5 text-white flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
+        <div className="bg-slate-900 p-5 text-white flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
               <span className="bg-teal-500/20 text-teal-300 text-xs font-mono font-bold px-2.5 py-0.5 rounded border border-teal-500/30">
                 {action.code}
               </span>
@@ -141,6 +149,7 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
               <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
                 action.status === 'concluida' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
                 action.status === 'em_andamento' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                action.status === 'cancelada' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
                 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
               }`}>
                 {action.status.toUpperCase().replace('_', ' ')}
@@ -149,19 +158,85 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
             <h2 className="text-xl font-bold text-slate-100 leading-tight">
               {action.title}
             </h2>
-            <p className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+            <p className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-2 sm:gap-3">
               <span>{action.unitName}</span>
               <span>•</span>
               <span>Docente: <strong className="text-slate-200">{action.instructorName}</strong> ({action.instructorCategory})</span>
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          >
-            <X className="w-6 h-6" />
-          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {onEditAction && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onEditAction(action);
+                }}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                title="Editar dados da Ação"
+              >
+                <Pencil className="w-3.5 h-3.5 text-blue-400" />
+                <span className="hidden sm:inline">Editar</span>
+              </button>
+            )}
+
+            {onDeleteAction && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                title="Excluir Ação"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden sm:inline">Excluir</span>
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
+
+        {/* Delete Confirmation Alert Banner */}
+        {showDeleteConfirm && (
+          <div className="bg-rose-50 border-b border-rose-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-900 animate-in fade-in duration-200">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-rose-100 rounded-lg text-rose-600 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="text-xs">
+                <strong className="block text-rose-950 font-bold text-sm">Confirmar exclusão desta Ação Educativa?</strong>
+                <p className="text-rose-800 mt-0.5">
+                  A ação <strong>{action.code} — {action.title}</strong> será permanentemente excluída do sistema, incluindo seus registros vinculados.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-rose-100 rounded-lg transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (onDeleteAction) {
+                    onDeleteAction(action.id);
+                  }
+                  setShowDeleteConfirm(false);
+                  onClose();
+                }}
+                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sim, Excluir</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-200 bg-slate-50 px-5 pt-2 text-sm font-semibold">

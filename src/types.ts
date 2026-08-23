@@ -32,6 +32,7 @@ export interface HealthUnit {
   id: string;
   name: string;
   code: string;
+  cnes?: string; // Código CNES oficial (7 dígitos)
   type: UnitType;
   district: string;
   coordinatorName: string;
@@ -40,6 +41,34 @@ export interface HealthUnit {
   activeStaffBreakdown?: Partial<Record<ProfessionalCategory, number>>;
   lastCensusDate?: string;
   censusStatus?: 'atualizado' | 'pendente' | 'em_revisao';
+  cnesSyncedAt?: string; // Última sincronização de dados CNES
+}
+
+export interface CnesProfessional {
+  id: string;
+  cpf: string;
+  cns: string; // Cartão Nacional de Saúde
+  name: string;
+  cboCode: string; // Código CBO (ex: 2235-05, 2251-25)
+  cboDescription: string;
+  professionalCategory: ProfessionalCategory;
+  councilRegistration?: string; // ex: COREN-PE 123456, CRM-PE 65432
+  cnesUnitCode: string; // Código CNES da unidade de lotação
+  unitId: string;
+  unitName: string;
+  weeklyHours: number; // Carga horária semanal (ex: 20h, 30h, 40h)
+  contractType: 'Estatutário' | 'Contrato Temporário' | 'CLT / Fundação' | 'Residente / Bolsista' | 'Cedido';
+  status: 'Ativo' | 'Afastado' | 'Licença';
+  lastSynced: string;
+}
+
+export interface CnesSyncSummary {
+  unitId: string;
+  cnesCode: string;
+  syncedAt: string;
+  totalActiveProfessionals: number;
+  categoriesFound: number;
+  source: 'DATASUS_API' | 'CNES_ARQUIVO_XML' | 'CNES_ARQUIVO_CSV';
 }
 
 export interface UnitStaffCensus {
@@ -285,13 +314,14 @@ export interface TrainingNeedDNC {
   unitId: string;
   unitName: string;
   suggestedTheme: string;
-  thematicAxis: ThematicAxis;
+  thematicAxis?: ThematicAxis;
   justification: string;
-  targetCategories: ProfessionalCategory[];
+  targetCategories: (ProfessionalCategory | string)[];
   urgency: 'Baixa' | 'Média' | 'Alta' | 'Crítica';
-  requestedBy: string;
+  requestedBy?: string;
   dateReported: string;
   status: 'Pendente' | 'Aprovado_LNT' | 'Aprovado_PAEPS' | 'Em_Planejamento' | 'Atendido';
+  estimatedParticipants?: number;
 }
 
 export interface AIAnalysisResult {

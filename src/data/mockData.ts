@@ -1310,10 +1310,23 @@ export const AUTHORIZED_CENTRAL_SERMAC_EMAILS = [
   'antonio.andrade@recife.pe.gov.br'
 ] as const;
 
+export const AUTHORIZED_CENTRAL_PASSCODES = [
+  'SERMAC@2026',
+  'SMSRECIFE2026',
+  'NEPS2026',
+  'RECIFE2026'
+] as const;
+
 export function isCentralSermacEmailAuthorized(email: string): boolean {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
   return (AUTHORIZED_CENTRAL_SERMAC_EMAILS as readonly string[]).includes(normalized);
+}
+
+export function isCentralSermacPasscodeValid(passcode: string): boolean {
+  if (!passcode) return false;
+  const clean = passcode.trim();
+  return (AUTHORIZED_CENTRAL_PASSCODES as readonly string[]).includes(clean);
 }
 
 export const AUTHORIZED_SERMAC_USERS: AuthUser[] = [
