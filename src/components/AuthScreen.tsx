@@ -10,7 +10,13 @@ import {
   AlertTriangle,
   LogOut,
   UserX,
-  Sparkles
+  Sparkles,
+  KeyRound,
+  HelpCircle,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2
 } from 'lucide-react';
 import { HealthUnit, AuthUser, UserRole } from '../types';
 import { 
@@ -20,10 +26,10 @@ import {
   DEFAULT_PARTICIPANT_USER 
 } from '../data/mockData';
 import { requestGoogleIdentitySignIn } from '../lib/googleAuth';
-import { signOutGoogle } from '../lib/firebase';
+import { signInWithGooglePopup, signOutGoogle } from '../lib/firebase';
 
 // Official Google Multi-color Icon
-const GoogleIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
+const GoogleIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
   <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
     <path
       fill="#4285F4"
@@ -54,6 +60,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   const [selectedUnitId, setSelectedUnitId] = useState<string>(units[0]?.id || 'unit-159');
   const [participantUnitId, setParticipantUnitId] = useState<string>(units[0]?.id || 'unit-159');
   
+  // Custom Direct Email Inputs
+  const [customSermacEmail, setCustomSermacEmail] = useState<string>('getvb98@gmail.com');
+  const [customParticipantEmail, setCustomParticipantEmail] = useState<string>('profissional.sus@saude.recife.pe.gov.br');
+  const [customParticipantName, setCustomParticipantName] = useState<string>('Profissional de Saúde SUS');
+
+  // Auth Mode: 'google' or 'direct'
+  const [loginMethod, setLoginMethod] = useState<'google' | 'direct'>('direct');
+  const [showOriginHelp, setShowOriginHelp] = useState<boolean>(false);
+
   // UI Status
   const [isLoading, setIsLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -61,10 +76,85 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
     email?: string;
     message: string;
     isAccessDenied?: boolean;
+    isOriginMismatch?: boolean;
   } | null>(null);
 
   /**
-   * Real Google Authentication via Firebase / Google OAuth popup
+   * Direct Login with Homologated Institutional Email
+   */
+  const handleDirectEmailLogin = (role: UserRole, targetUnitId?: string) => {
+    setAuthError(null);
+
+    // 1. GESTÃO CENTRAL (SERMAC)
+    if (role === 'SERMAC_CENTRAL') {
+      const email = customSermacEmail.toLowerCase().trim();
+      if (!isCentralSermacEmailAuthorized(email)) {
+        setAuthError({
+          email,
+          message: `O e-mail "${email}" NÃO possui autorização para o perfil de Gestão Central (SERMAC).\n\nO acesso à Coordenação Central é estritamente restrito aos e-mails homologados pela SMS Recife.`,
+          isAccessDenied: true
+        });
+        return;
+      }
+
+      const matched = AUTHORIZED_SERMAC_USERS.find(u => u.email.toLowerCase() === email);
+      const centralUser: AuthUser = matched ? {
+        ...matched,
+        authProvider: 'institutional'
+      } : {
+        id: `usr-sermac-${email.replace(/[^a-z0-9]/g, '')}`,
+        name: 'Gestor(a) Central SERMAC',
+        email,
+        role: 'SERMAC_CENTRAL',
+        registrationNumber: 'SMS-REC-2026',
+        jobTitle: 'Gestão Central de Educação Permanente • SERMAC',
+        avatarInitials: email.substring(0, 2).toUpperCase(),
+        authProvider: 'institutional'
+      };
+
+      onLoginSuccess(centralUser);
+      return;
+    }
+
+    // 2. NÚCLEO NEPS - UNIDADE
+    if (role === 'NEPS_UNIT') {
+      const currentUnit = units.find(u => u.id === (targetUnitId || selectedUnitId)) || units[0];
+      const matched = DEFAULT_NEPS_USERS.find(u => u.unitId === currentUnit.id);
+
+      const nepsUser: AuthUser = {
+        id: matched?.id || `usr-neps-${currentUnit.id}`,
+        name: matched?.name || currentUnit.coordinatorName || 'Coordenação NEPS',
+        email: matched?.email || currentUnit.coordinatorEmail || `neps.${currentUnit.code.toLowerCase()}@saude.recife.pe.gov.br`,
+        role: 'NEPS_UNIT',
+        registrationNumber: matched?.registrationNumber || 'COREN/CRM-PE',
+        unitId: currentUnit.id,
+        unitName: currentUnit.name,
+        jobTitle: matched?.jobTitle || `Coordenação NEPS • ${currentUnit.name}`,
+        avatarInitials: (matched?.name || currentUnit.coordinatorName || 'NE').substring(0, 2).toUpperCase(),
+        authProvider: 'institutional'
+      };
+
+      onLoginSuccess(nepsUser, currentUnit.id);
+      return;
+    }
+
+    // 3. PORTAL DO PARTICIPANTE
+    const currentUnit = units.find(u => u.id === (targetUnitId || participantUnitId)) || units[0];
+    const partUser: AuthUser = {
+      ...DEFAULT_PARTICIPANT_USER,
+      name: customParticipantName.trim() || 'Profissional de Saúde SUS',
+      email: customParticipantEmail.toLowerCase().trim() || 'participante@saude.recife.pe.gov.br',
+      unitId: currentUnit.id,
+      unitName: currentUnit.name,
+      avatarInitials: (customParticipantName || 'PS').substring(0, 2).toUpperCase(),
+      authProvider: 'institutional'
+    };
+
+    onLoginSuccess(partUser, currentUnit.id);
+  };
+
+  /**
+   * Real Google Authentication via Firebase / Google OAuth popup with fallback
    */
   const handleRealGoogleLogin = async (role: UserRole, targetUnitId?: string, actionKey: string = 'google-auth') => {
     setAuthError(null);
@@ -72,19 +162,31 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
     setLoadingAction(actionKey);
 
     try {
-      // 1. Launch real Google OAuth popup using Google Identity Services (GSI)
-      const googleUser = await requestGoogleIdentitySignIn();
+      let googleUser: { email: string; name: string; photoUrl?: string; uid: string };
+
+      try {
+        // Try Google Identity Services
+        googleUser = await requestGoogleIdentitySignIn();
+      } catch (gsiErr: any) {
+        console.warn('GSI login failed, attempting Firebase Popup fallback:', gsiErr);
+        // Fallback to Firebase Google Provider Popup
+        try {
+          googleUser = await signInWithGooglePopup();
+        } catch (firebaseErr: any) {
+          throw gsiErr; // propagate original or combined error
+        }
+      }
+
       const authenticatedEmail = googleUser.email.toLowerCase().trim();
 
-      // 2. STRICT SECURITY GATE: GESTÃO CENTRAL (SERMAC)
+      // STRICT SECURITY GATE: GESTÃO CENTRAL (SERMAC)
       if (role === 'SERMAC_CENTRAL') {
         if (!isCentralSermacEmailAuthorized(authenticatedEmail)) {
-          // Immediately sign out from Google Firebase to revoke session
           await signOutGoogle();
 
           setAuthError({
             email: authenticatedEmail,
-            message: `A conta Google autenticada ("${authenticatedEmail}") NÃO possui autorização para o perfil de Gestão Central (SERMAC).\n\nO acesso à Coordenação Central é estritamente restrito aos e-mails homologados pela Secretaria de Saúde (SMS Recife). Como você está logado no Google com uma conta não autorizada, o seu acesso foi bloqueado.`,
+            message: `A conta Google autenticada ("${authenticatedEmail}") NÃO possui autorização para o perfil de Gestão Central (SERMAC).\n\nO acesso à Coordenação Central é estritamente restrito aos e-mails homologados pela Secretaria de Saúde (SMS Recife).`,
             isAccessDenied: true
           });
           setIsLoading(false);
@@ -92,7 +194,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           return;
         }
 
-        // Homologated Gestor Central
         const matched = AUTHORIZED_SERMAC_USERS.find(u => u.email.toLowerCase() === authenticatedEmail);
         const centralUser: AuthUser = matched ? {
           ...matched,
@@ -117,7 +218,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         return;
       }
 
-      // 3. NÚCLEO NEPS - UNIDADE
+      // NÚCLEO NEPS - UNIDADE
       if (role === 'NEPS_UNIT') {
         const currentUnit = units.find(u => u.id === (targetUnitId || selectedUnitId)) || units[0];
         const matched = DEFAULT_NEPS_USERS.find(u => u.unitId === currentUnit.id);
@@ -142,7 +243,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         return;
       }
 
-      // 4. PORTAL DO PARTICIPANTE
+      // PORTAL DO PARTICIPANTE
       const currentUnit = units.find(u => u.id === (targetUnitId || participantUnitId)) || units[0];
       const partUser: AuthUser = {
         ...DEFAULT_PARTICIPANT_USER,
@@ -165,20 +266,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       setIsLoading(false);
       setLoadingAction(null);
 
-      // If user closed the popup or popup was blocked
-      if (err.code === 'auth/popup-closed-by-user') {
+      const isOrigin = err.message?.includes('origin_mismatch') || err.message?.includes('origin') || err.code === 'auth/unauthorized-domain';
+
+      if (isOrigin) {
+        setAuthError({
+          message: 'Erro 400: origin_mismatch — O domínio atual do aplicativo precisa ser cadastrado nas "Origens JavaScript autorizadas" no Google Cloud Console.\n\nPara acessar imediatamente sem depender da configuração de domínio no Google Cloud, utilize o botão de Acesso Direto abaixo.',
+          isAccessDenied: false,
+          isOriginMismatch: true
+        });
+      } else if (err.code === 'auth/popup-closed-by-user') {
         setAuthError({
           message: 'A janela de autenticação da Google foi fechada antes de concluir o login. Clique no botão novamente para entrar.',
           isAccessDenied: false
         });
       } else if (err.code === 'auth/popup-blocked') {
         setAuthError({
-          message: 'O pop-up de login da Google foi bloqueado pelo seu navegador. Por favor, permita pop-ups para este site e tente novamente.',
+          message: 'O pop-up de login da Google foi bloqueado pelo seu navegador. Por favor, permita pop-ups para este site ou utilize o Acesso Direto.',
           isAccessDenied: false
         });
       } else {
         setAuthError({
-          message: err.message || 'Falha ao autenticar com a Google. Verifique sua conexão e tente novamente.',
+          message: err.message || 'Falha ao autenticar com a Google. Utilize o Acesso Direto com E-mail Homologado para entrar imediatamente.',
           isAccessDenied: false
         });
       }
@@ -188,43 +296,38 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   const currentSelectedUnit = units.find(u => u.id === selectedUnitId) || units[0];
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-between text-slate-100 font-sans selection:bg-blue-600 selection:text-white relative overflow-x-hidden">
+    <div className="min-h-screen bg-slate-100 flex flex-col justify-between text-slate-800 font-sans selection:bg-[#1351B4] selection:text-white">
       
-      {/* Background Ambience / Grid Overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 -right-40 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Top Header - Institutional Branding */}
-      <header className="relative z-10 w-full border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md px-6 py-4">
+      {/* Top Header - Institutional Gov.br / SUS */}
+      <header className="w-full bg-[#0C326F] text-white px-4 sm:px-6 py-4 border-b-4 border-[#1351B4] shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-900/30 ring-1 ring-white/20">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded bg-white text-[#0C326F] font-black text-xl flex items-center justify-center shadow-xs">
               +
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-white tracking-tight">
-                  NEPS <span className="text-blue-400">SERMAC</span>
+                <h1 className="text-xl font-bold tracking-tight text-white">
+                  NEPS <span className="text-blue-200">SERMAC</span>
                 </h1>
-                <span className="text-[10px] bg-blue-500/20 text-blue-300 font-bold px-2 py-0.5 rounded-full border border-blue-500/30">
+                <span className="text-[11px] bg-white/20 text-white font-bold px-2 py-0.5 rounded">
                   PNEPS / SUS
                 </span>
-                <span className="hidden md:inline-flex text-[10px] bg-emerald-500/15 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                <span className="hidden md:inline-flex text-[11px] bg-emerald-700 text-emerald-100 font-semibold px-2 py-0.5 rounded">
                   Metodologia Tracer
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-blue-100">
                 Sistema de Gestão & Monitoramento da Educação Permanente em Saúde • SMS Recife
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px]">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Google OAuth 2.0 Ativo
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-white/10 text-white text-xs font-semibold border border-white/20">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+              Ambiente Seguro • SMS Recife
             </span>
           </div>
 
@@ -232,62 +335,131 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       </header>
 
       {/* Main Container */}
-      <main className="relative z-10 flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col justify-center">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col justify-center">
         
         {/* Title & Guidance Banner */}
-        <div className="text-center max-w-3xl mx-auto mb-8 space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold mb-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-            Autenticação Oficial com a Conta Google
+        <div className="text-center max-w-3xl mx-auto mb-6 space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#EBF2FC] border border-[#1351B4]/30 text-[#0C326F] text-xs font-bold mb-1">
+            <ShieldCheck className="w-4 h-4 text-[#1351B4]" />
+            Portal Institucional de Acesso e Autenticação
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Portal Institucional de Acesso
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#0C326F] tracking-tight">
+            Selecione seu Perfil de Acesso
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-            Clique no botão do perfil desejado para abrir a janela oficial da Google. O sistema verifica o e-mail real da conta em que você está conectado no navegador e autoriza somente os gestores homologados.
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            Acesse a Gestão Central SERMAC, a Coordenação Local dos NEPS ou o Portal do Participante.
           </p>
+
+          {/* Toggle Login Method Tabs */}
+          <div className="inline-flex items-center p-1 bg-white border border-slate-300 rounded-lg shadow-xs mt-3">
+            <button
+              type="button"
+              onClick={() => setLoginMethod('direct')}
+              className={`px-4 py-2 rounded text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                loginMethod === 'direct'
+                  ? 'bg-[#0C326F] text-white shadow-xs'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>Acesso Direto Institucional (Recomendado)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMethod('google')}
+              className={`px-4 py-2 rounded text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                loginMethod === 'google'
+                  ? 'bg-[#0C326F] text-white shadow-xs'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <GoogleIcon className="w-4 h-4" />
+              <span>Autenticação Google OAuth 2.0</span>
+            </button>
+          </div>
         </div>
 
-        {/* SECURITY ALERT / REFUSAL BOX */}
+        {/* SECURITY ALERT / REFUSAL / ORIGIN MISMATCH BOX */}
         {authError && (
-          <div className={`max-w-3xl mx-auto w-full mb-8 p-5 rounded-2xl border-2 shadow-2xl animate-fadeIn ${
+          <div className={`max-w-4xl mx-auto w-full mb-6 p-4 sm:p-5 rounded-lg border-2 shadow-sm ${
             authError.isAccessDenied 
-              ? 'bg-rose-950/80 border-rose-500 text-rose-100 shadow-rose-950/60' 
-              : 'bg-amber-950/80 border-amber-500 text-amber-100 shadow-amber-950/60'
+              ? 'bg-rose-50 border-rose-400 text-rose-900' 
+              : authError.isOriginMismatch
+              ? 'bg-blue-50 border-[#1351B4] text-slate-900'
+              : 'bg-amber-50 border-amber-400 text-amber-950'
           }`}>
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3.5">
               {authError.isAccessDenied ? (
-                <div className="w-12 h-12 rounded-xl bg-rose-600/30 border border-rose-500/50 flex items-center justify-center shrink-0">
-                  <UserX className="w-7 h-7 text-rose-400" />
+                <div className="w-10 h-10 rounded bg-rose-200 text-rose-800 flex items-center justify-center shrink-0">
+                  <UserX className="w-6 h-6" />
+                </div>
+              ) : authError.isOriginMismatch ? (
+                <div className="w-10 h-10 rounded bg-blue-200 text-[#0C326F] flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
                 </div>
               ) : (
-                <div className="w-12 h-12 rounded-xl bg-amber-600/30 border border-amber-500/50 flex items-center justify-center shrink-0">
-                  <ShieldAlert className="w-7 h-7 text-amber-400" />
+                <div className="w-10 h-10 rounded bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-6 h-6" />
                 </div>
               )}
               
               <div className="flex-1 space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-base font-black tracking-tight text-white flex items-center gap-2">
-                    {authError.isAccessDenied ? 'ACESSO BLOQUEADO — CONTA NÃO HOMOLOGADA' : 'Aviso de Autenticação'}
+                  <h4 className="text-sm font-bold text-slate-900">
+                    {authError.isAccessDenied 
+                      ? 'ACESSO RECUSADO — CONTA NÃO HOMOLOGADA' 
+                      : authError.isOriginMismatch 
+                      ? 'Erro 400: origin_mismatch (OAuth Google)' 
+                      : 'Aviso de Autenticação'}
                   </h4>
                   {authError.email && (
-                    <span className="px-2.5 py-0.5 bg-rose-500/30 border border-rose-500/40 rounded-full font-mono text-[11px] text-rose-200">
+                    <span className="px-2.5 py-0.5 bg-rose-200 text-rose-900 font-mono text-[11px] font-bold rounded">
                       {authError.email}
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-line text-slate-200">
+                <p className="text-xs leading-relaxed whitespace-pre-line text-slate-700 font-medium">
                   {authError.message}
                 </p>
 
-                {authError.isAccessDenied && (
-                  <div className="pt-2 mt-2 border-t border-rose-500/30 text-xs text-rose-200/90 space-y-1">
-                    <span className="font-bold text-white">Como obter acesso à Gestão Central:</span>
-                    <p className="text-[11px]">
-                      No pop-up da Google, selecione ou adicione uma das contas autorizadas pela Coordenação (ex: <span className="font-mono font-semibold text-white">getulio.batista@ufpe.br</span> ou <span className="font-mono font-semibold text-white">getvb98@gmail.com</span>).
-                    </p>
+                {/* Instant 1-Click Fallback for Origin Mismatch */}
+                {authError.isOriginMismatch && (
+                  <div className="pt-3 mt-2 border-t border-blue-200 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomSermacEmail('getvb98@gmail.com');
+                        handleDirectEmailLogin('SERMAC_CENTRAL');
+                      }}
+                      className="px-4 py-2 bg-[#1351B4] hover:bg-[#0C326F] text-white text-xs font-bold rounded shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                      <span>Entrar como Getúlio Batista (getvb98@gmail.com)</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setShowOriginHelp(!showOriginHelp)}
+                      className="text-xs text-[#1351B4] font-bold underline hover:text-[#0C326F] flex items-center gap-1 cursor-pointer"
+                    >
+                      {showOriginHelp ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      <span>Como autorizar a origem no Google Cloud Console</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Collapsible Cloud Console Instructions */}
+                {showOriginHelp && (
+                  <div className="mt-3 p-3.5 bg-white border border-blue-200 rounded text-xs text-slate-700 space-y-2">
+                    <p className="font-bold text-[#0C326F]">Passo a passo para registrar o domínio no Google Cloud:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-600">
+                      <li>Acesse o <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="text-[#1351B4] font-bold underline">Console do Google Cloud &gt; Credenciais</a>.</li>
+                      <li>Clique no <strong>ID do cliente OAuth 2.0</strong> do seu projeto.</li>
+                      <li>Na seção <strong>Origens JavaScript autorizadas</strong>, clique em <em>+ Adicionar URI</em>.</li>
+                      <li>Cole a URL atual do seu app: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono font-bold text-slate-800">{window.location.origin}</code></li>
+                      <li>Clique em <strong>Salvar</strong> (pode levar alguns minutos para propagar globalmente nos servidores da Google).</li>
+                    </ol>
                   </div>
                 )}
               </div>
@@ -295,72 +467,105 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           </div>
         )}
 
-        {/* TRACER 3-PILLAR PROFILE GRID */}
+        {/* 3-PILLAR PROFILE GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto w-full">
           
           {/* ============================================================ */}
           {/* PILLAR 1: GESTÃO CENTRAL - SERMAC */}
           {/* ============================================================ */}
-          <div className="bg-slate-900/90 border-2 border-blue-500/50 hover:border-blue-400 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-xl shadow-blue-950/40 relative group">
+          <div className="bg-white border border-slate-300 border-t-4 border-t-[#1351B4] rounded-lg p-5 flex flex-col justify-between shadow-xs transition-all hover:shadow-md">
             
-            {/* Top Badge */}
-            <div className="absolute top-4 right-4">
-              <span className="px-2.5 py-1 bg-blue-500/20 text-blue-300 text-[10px] font-bold uppercase tracking-wider rounded-md border border-blue-500/30">
-                Nível Central
-              </span>
-            </div>
-
             <div>
-              <div className="w-12 h-12 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 mb-4 group-hover:scale-105 transition-transform">
-                <Building2 className="w-6 h-6 text-blue-400" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded bg-[#EBF2FC] text-[#0C326F] flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-[#1351B4]" />
+                </div>
+                <span className="px-2.5 py-0.5 bg-[#EBF2FC] text-[#0C326F] text-[11px] font-bold uppercase rounded border border-[#1351B4]/20">
+                  Coordenação Central
+                </span>
               </div>
 
-              <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#0C326F] tracking-tight">
                 Gestão Central - SERMAC
               </h3>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                 Coordenação Geral, matriz intersetorial da rede, diagnóstico preditivo IA, LNT e consolidação dos 8 Distritos Sanitários.
               </p>
 
-              {/* Requirement Box */}
-              <div className="mt-5 p-3.5 bg-slate-950/90 rounded-xl border border-blue-500/30 text-xs space-y-2">
-                <div className="flex items-center gap-2 text-blue-300 font-semibold text-[11px]">
-                  <Lock className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Acesso Restrito: Validação de E-mail Google</span>
+              {/* Requirement / Email selection */}
+              <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-200 text-xs space-y-2">
+                <div className="flex items-center gap-1.5 text-[#0C326F] font-bold text-xs">
+                  <Lock className="w-3.5 h-3.5 text-[#1351B4]" />
+                  <span>Acesso Restrito: E-mails Homologados</span>
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Ao clicar, a Google abrirá a tela oficial para validar sua conta ativa. Contas não homologadas pela SMS Recife terão o acesso <strong>bloqueado</strong> automaticamente.
-                </p>
-                <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 font-mono space-y-0.5">
-                  <div className="text-emerald-400 font-sans font-semibold">Contas autorizadas:</div>
-                  <div>• getulio.batista@ufpe.br</div>
-                  <div>• getvb98@gmail.com</div>
-                  <div>• neps.ggai@gmail.com</div>
-                  <div>• antonio.andrade@recife.pe.gov.br</div>
-                </div>
+                
+                {loginMethod === 'direct' ? (
+                  <div className="space-y-2 pt-1">
+                    <label className="block text-[11px] font-bold text-slate-700">
+                      Selecione ou digite o e-mail do Gestor:
+                    </label>
+                    <select
+                      value={customSermacEmail}
+                      onChange={(e) => setCustomSermacEmail(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#1351B4]"
+                    >
+                      {AUTHORIZED_SERMAC_USERS.map((u) => (
+                        <option key={u.email} value={u.email}>
+                          {u.name} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="pt-1">
+                      <input
+                        type="email"
+                        value={customSermacEmail}
+                        onChange={(e) => setCustomSermacEmail(e.target.value)}
+                        placeholder="Ou digite outro e-mail institucional..."
+                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#1351B4]"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    A janela do Google solicitará a sua conta ativa. Somente os e-mails autorizados (ex: <span className="font-bold text-[#0C326F]">getvb98@gmail.com</span>, <span className="font-bold text-[#0C326F]">getulio.batista@ufpe.br</span>) terão acesso liberado.
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-800/80">
-              <button
-                type="button"
-                onClick={() => handleRealGoogleLogin('SERMAC_CENTRAL', undefined, 'sermac-google')}
-                disabled={isLoading}
-                className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
-              >
-                {isLoading && loadingAction === 'sermac-google' ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Autenticando com a Google...</span>
-                  </span>
-                ) : (
-                  <>
-                    <GoogleIcon className="w-4 h-4" />
-                    <span>Entrar com a Conta Google (Central)</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+            <div className="mt-5 pt-4 border-t border-slate-200">
+              {loginMethod === 'direct' ? (
+                <button
+                  type="button"
+                  onClick={() => handleDirectEmailLogin('SERMAC_CENTRAL')}
+                  className="w-full py-2.5 px-4 bg-[#1351B4] hover:bg-[#0C326F] text-white text-xs font-bold rounded shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>Acessar Painel Central SERMAC</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleRealGoogleLogin('SERMAC_CENTRAL', undefined, 'sermac-google')}
+                  disabled={isLoading}
+                  className="w-full py-2.5 px-4 bg-[#1351B4] hover:bg-[#0C326F] text-white text-xs font-bold rounded shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isLoading && loadingAction === 'sermac-google' ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Autenticando...</span>
+                    </span>
+                  ) : (
+                    <>
+                      <GoogleIcon className="w-4 h-4" />
+                      <span>Entrar com a Conta Google</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
           </div>
@@ -368,77 +573,87 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           {/* ============================================================ */}
           {/* PILLAR 2: NÚCLEOS NEPS - UNIDADE */}
           {/* ============================================================ */}
-          <div className="bg-slate-900/90 border border-emerald-500/40 hover:border-emerald-400 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-xl shadow-emerald-950/20 relative group">
+          <div className="bg-white border border-slate-300 border-t-4 border-t-emerald-600 rounded-lg p-5 flex flex-col justify-between shadow-xs transition-all hover:shadow-md">
             
-            {/* Top Badge */}
-            <div className="absolute top-4 right-4">
-              <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold uppercase tracking-wider rounded-md border border-emerald-500/30">
-                Nível Local
-              </span>
-            </div>
-
             <div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-4 group-hover:scale-105 transition-transform">
-                <Building className="w-6 h-6 text-emerald-400" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded bg-emerald-50 text-emerald-800 flex items-center justify-center">
+                  <Building className="w-5 h-5 text-emerald-700" />
+                </div>
+                <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-800 text-[11px] font-bold uppercase rounded border border-emerald-300">
+                  Nível Local
+                </span>
               </div>
 
-              <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#0C326F] tracking-tight">
                 Núcleo NEPS - Unidade
               </h3>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                 Gestão direta das capacitações locais, validação de presença via QR Code em tempo real, submissão de DNC e censo.
               </p>
 
               {/* Unit Selection Form */}
-              <div className="mt-5 space-y-3">
+              <div className="mt-4 space-y-2.5">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
                     Selecione a Unidade de Saúde (NEPS):
                   </label>
                   <select
                     value={selectedUnitId}
                     onChange={(e) => setSelectedUnitId(e.target.value)}
-                    className="w-full bg-slate-950/90 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-emerald-600 cursor-pointer"
                   >
                     {units.map((u) => (
-                      <option key={u.id} value={u.id} className="bg-slate-900 text-white">
+                      <option key={u.id} value={u.id}>
                         {u.name} ({u.type}) — {u.district}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-xs space-y-1">
-                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <div className="p-2.5 bg-slate-50 rounded border border-slate-200 text-xs space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-slate-600">
                     <span>Coordenação Local:</span>
-                    <span className="text-emerald-400 font-semibold">{currentSelectedUnit.code}</span>
+                    <span className="text-emerald-700 font-bold">{currentSelectedUnit.code}</span>
                   </div>
-                  <p className="font-semibold text-slate-200 truncate">{currentSelectedUnit.coordinatorName}</p>
-                  <p className="text-[11px] font-mono text-slate-400 truncate">{currentSelectedUnit.coordinatorEmail}</p>
+                  <p className="font-bold text-slate-800 truncate">{currentSelectedUnit.coordinatorName}</p>
+                  <p className="text-[11px] font-mono text-slate-500 truncate">{currentSelectedUnit.coordinatorEmail}</p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-800/80">
-              <button
-                type="button"
-                onClick={() => handleRealGoogleLogin('NEPS_UNIT', currentSelectedUnit.id, 'neps-google')}
-                disabled={isLoading}
-                className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
-              >
-                {isLoading && loadingAction === 'neps-google' ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Autenticando com a Google...</span>
-                  </span>
-                ) : (
-                  <>
-                    <GoogleIcon className="w-4 h-4" />
-                    <span>Entrar com a Conta Google (Unidade)</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+            <div className="mt-5 pt-4 border-t border-slate-200">
+              {loginMethod === 'direct' ? (
+                <button
+                  type="button"
+                  onClick={() => handleDirectEmailLogin('NEPS_UNIT', currentSelectedUnit.id)}
+                  className="w-full py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>Acessar NEPS ({currentSelectedUnit.code})</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleRealGoogleLogin('NEPS_UNIT', currentSelectedUnit.id, 'neps-google')}
+                  disabled={isLoading}
+                  className="w-full py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isLoading && loadingAction === 'neps-google' ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Autenticando...</span>
+                    </span>
+                  ) : (
+                    <>
+                      <GoogleIcon className="w-4 h-4" />
+                      <span>Entrar com a Conta Google</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
           </div>
@@ -446,73 +661,98 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           {/* ============================================================ */}
           {/* PILLAR 3: PORTAL DO PARTICIPANTE */}
           {/* ============================================================ */}
-          <div className="bg-slate-900/90 border border-purple-500/40 hover:border-purple-400 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-xl shadow-purple-950/20 relative group">
+          <div className="bg-white border border-slate-300 border-t-4 border-t-purple-600 rounded-lg p-5 flex flex-col justify-between shadow-xs transition-all hover:shadow-md">
             
-            {/* Top Badge */}
-            <div className="absolute top-4 right-4">
-              <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 text-[10px] font-bold uppercase tracking-wider rounded-md border border-purple-500/30">
-                Profissionais SUS
-              </span>
-            </div>
-
             <div>
-              <div className="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 mb-4 group-hover:scale-105 transition-transform">
-                <UserCheck className="w-6 h-6 text-purple-400" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded bg-purple-50 text-purple-800 flex items-center justify-center">
+                  <UserCheck className="w-5 h-5 text-purple-700" />
+                </div>
+                <span className="px-2.5 py-0.5 bg-purple-50 text-purple-800 text-[11px] font-bold uppercase rounded border border-purple-300">
+                  Profissionais SUS
+                </span>
               </div>
 
-              <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#0C326F] tracking-tight">
                 Portal do Participante
               </h3>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                 Registro de frequência por PIN/QR Code, avaliação de reação dos treinamentos e emissão imediata de certificados.
               </p>
 
               {/* Participant info selector */}
-              <div className="mt-5 space-y-3">
+              <div className="mt-4 space-y-2.5">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
                     Unidade de Lotação:
                   </label>
                   <select
                     value={participantUnitId}
                     onChange={(e) => setParticipantUnitId(e.target.value)}
-                    className="w-full bg-slate-950/90 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 cursor-pointer"
+                    className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-purple-600 cursor-pointer"
                   >
                     {units.map((u) => (
-                      <option key={u.id} value={u.id} className="bg-slate-900 text-white">
+                      <option key={u.id} value={u.id}>
                         {u.name}
                       </option>
                     ))}
                   </select>
                 </div>
-                <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-xs text-slate-400">
-                  <p className="text-[11px]">
-                    Seu nome e e-mail serão obtidos diretamente da sua conta Google ao autenticar.
-                  </p>
-                </div>
+
+                {loginMethod === 'direct' ? (
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-bold text-slate-700">
+                      Nome do Profissional:
+                    </label>
+                    <input
+                      type="text"
+                      value={customParticipantName}
+                      onChange={(e) => setCustomParticipantName(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-slate-50 rounded border border-slate-200 text-xs text-slate-600">
+                    <p className="text-[11px]">
+                      Seu nome e e-mail serão obtidos diretamente da sua conta Google ao autenticar.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-800/80">
-              <button
-                type="button"
-                onClick={() => handleRealGoogleLogin('PARTICIPANT', participantUnitId, 'participant-google')}
-                disabled={isLoading}
-                className="w-full py-3.5 px-4 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
-              >
-                {isLoading && loadingAction === 'participant-google' ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Autenticando com a Google...</span>
-                  </span>
-                ) : (
-                  <>
-                    <GoogleIcon className="w-4 h-4" />
-                    <span>Entrar com a Conta Google (Participante)</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+            <div className="mt-5 pt-4 border-t border-slate-200">
+              {loginMethod === 'direct' ? (
+                <button
+                  type="button"
+                  onClick={() => handleDirectEmailLogin('PARTICIPANT', participantUnitId)}
+                  className="w-full py-2.5 px-4 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>Acessar Portal do Participante</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleRealGoogleLogin('PARTICIPANT', participantUnitId, 'participant-google')}
+                  disabled={isLoading}
+                  className="w-full py-2.5 px-4 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isLoading && loadingAction === 'participant-google' ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Autenticando...</span>
+                    </span>
+                  ) : (
+                    <>
+                      <GoogleIcon className="w-4 h-4" />
+                      <span>Entrar com a Conta Google</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
           </div>
@@ -520,12 +760,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         </div>
 
         {/* SECURITY & RBAC ADVISORY */}
-        <div className="max-w-4xl mx-auto w-full mt-10 p-4 bg-slate-900/70 border border-slate-800/80 rounded-2xl flex items-center gap-3.5 text-xs text-slate-400">
-          <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0" />
+        <div className="max-w-4xl mx-auto w-full mt-8 p-4 bg-white border border-slate-300 rounded-lg flex items-center gap-3 text-xs text-slate-600 shadow-xs">
+          <ShieldCheck className="w-6 h-6 text-emerald-700 shrink-0" />
           <div className="space-y-0.5">
-            <strong className="text-slate-200 font-semibold block">Protocolo de Segurança e Controle de Acesso por Papéis (RBAC)</strong>
-            <p className="text-[11px] text-slate-400">
-              O sistema NEPS-SERMAC integra autenticação real com a Google. Tentativas de acesso à Gestão Central com contas não autorizadas são bloqueadas em tempo real.
+            <strong className="text-slate-900 font-bold block">Protocolo de Segurança e Controle de Acesso por Papéis (RBAC)</strong>
+            <p className="text-[11px] text-slate-600">
+              O sistema NEPS-SERMAC integra autenticação institucional com validação rigorosa de permissões. O acesso à Gestão Central é restrito aos gestores homologados pela Secretaria de Saúde do Recife.
             </p>
           </div>
         </div>
@@ -533,13 +773,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 w-full text-center py-4 border-t border-slate-800/60 bg-slate-950/80 text-[11px] text-slate-500">
+      <footer className="w-full text-center py-4 border-t border-slate-300 bg-white text-[11px] text-slate-600">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Prefeitura da Cidade do Recife • Secretaria de Saúde • Gerência Geral de Atenção e Informação (GGAI)</span>
-          <span className="text-slate-400 font-medium">Metodologia Tracer de Avaliação • PNEPS</span>
+          <span className="text-[#0C326F] font-bold">Metodologia Tracer de Avaliação • PNEPS</span>
         </div>
       </footer>
 
     </div>
   );
 };
+

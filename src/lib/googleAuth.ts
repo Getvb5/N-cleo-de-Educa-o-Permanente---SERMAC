@@ -46,7 +46,7 @@ export const requestGoogleIdentitySignIn = (): Promise<{
     const google = (window as any).google;
 
     if (!google?.accounts?.id && !google?.accounts?.oauth2) {
-      reject(new Error('Google Identity Services ainda está carregando. Por favor, aguarde 2 segundos e tente novamente.'));
+      reject(new Error('A biblioteca de autenticação Google ainda está carregando. Por favor, aguarde alguns segundos ou use o Acesso Institucional Direto.'));
       return;
     }
 
@@ -58,7 +58,11 @@ export const requestGoogleIdentitySignIn = (): Promise<{
           scope: 'email profile openid',
           callback: async (tokenResponse: any) => {
             if (tokenResponse.error) {
-              reject(new Error(tokenResponse.error_description || tokenResponse.error));
+              if (tokenResponse.error === 'origin_mismatch' || (tokenResponse.error_description && tokenResponse.error_description.includes('origin'))) {
+                reject(new Error('Erro 400: origin_mismatch — O domínio atual não está registrado nas Origens JavaScript do Google Cloud. Utilize a opção "Acesso Direto com E-mail Homologado" abaixo para entrar imediatamente.'));
+              } else {
+                reject(new Error(tokenResponse.error_description || tokenResponse.error));
+              }
               return;
             }
             if (!tokenResponse.access_token) {
@@ -88,6 +92,14 @@ export const requestGoogleIdentitySignIn = (): Promise<{
               });
             } catch (fetchErr: any) {
               reject(fetchErr);
+            }
+          },
+          error_callback: (err: any) => {
+            console.error('Google TokenClient error_callback:', err);
+            if (err.type === 'origin_mismatch' || err.message?.includes('origin')) {
+              reject(new Error('Erro 400: origin_mismatch — O domínio de pré-visualização atual precisa ser autorizado no Google Cloud Console. Use o "Acesso Direto com E-mail Homologado" para entrar agora mesmo.'));
+            } else {
+              reject(new Error(err.message || 'Erro na autenticação do Google.'));
             }
           }
         });
@@ -126,7 +138,7 @@ export const requestGoogleIdentitySignIn = (): Promise<{
 
       google.accounts.id.prompt((notification: any) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          reject(new Error('A janela de login da Google não pôde ser exibida no momento.'));
+          reject(new Error('A janela de login do Google não pôde ser exibida no momento. Utilize o "Acesso Direto com E-mail Homologado" para entrar.'));
         }
       });
     } catch (err: any) {
