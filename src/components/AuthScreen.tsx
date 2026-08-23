@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Building2, 
   Building, 
@@ -6,26 +6,22 @@ import {
   Mail, 
   ShieldCheck, 
   ArrowRight, 
-  CheckCircle2, 
-  Sparkles, 
   ShieldAlert, 
-  Check, 
-  Layers,
-  Search,
-  ExternalLink,
-  ChevronRight,
-  Fingerprint,
-  Lock,
-  KeyRound,
+  Lock, 
   AlertTriangle,
-  Info,
-  Settings
+  Settings,
+  Sparkles,
+  ExternalLink,
+  CheckCircle,
+  XCircle,
+  HelpCircle,
+  RotateCcw
 } from 'lucide-react';
 import { HealthUnit, AuthUser, UserRole } from '../types';
 import { 
   isCentralSermacEmailAuthorized, 
   AUTHORIZED_SERMAC_USERS, 
-  DEFAULT_SERMAC_USER, 
+  AUTHORIZED_CENTRAL_SERMAC_EMAILS,
   DEFAULT_NEPS_USERS, 
   DEFAULT_PARTICIPANT_USER 
 } from '../data/mockData';
@@ -63,50 +59,71 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   const [participantUnitId, setParticipantUnitId] = useState<string>(units[0]?.id || 'unit-159');
   const [participantName, setParticipantName] = useState('Enf. Juliana Vasconcelos');
   
-  // Custom Google/Gmail input in modal
-  const [googleEmailInput, setGoogleEmailInput] = useState('getvb98@gmail.com');
-  const [googlePasswordInput, setGooglePasswordInput] = useState('');
-  
   // UI Status
   const [isLoading, setIsLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [modalTargetRole, setModalTargetRole] = useState<UserRole>('SERMAC_CENTRAL');
-  const [modalTargetUnitId, setModalTargetUnitId] = useState<string | undefined>(undefined);
+  const [successInfo, setSuccessInfo] = useState<string | null>(null);
   
-  // Google Client ID configuration state
-  const [customClientId, setCustomClientId] = useState<string>(
-    (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || ''
-  );
-  const [showClientIdConfig, setShowClientIdConfig] = useState(false);
+  // Google OAuth Config State
+  const [clientId, setClientId] = useState<string>('');
+  const [showConfigDrawer, setShowConfigDrawer] = useState(false);
+  const [showGoogleAccountSelector, setShowGoogleAccountSelector] = useState(false);
+  const [activeRoleForAuth, setActiveRoleForAuth] = useState<UserRole>('SERMAC_CENTRAL');
+  const [activeUnitForAuth, setActiveUnitForAuth] = useState<string | undefined>(undefined);
+  
+  // Custom test account field for verifying refusal behavior
+  const [customTestEmail, setCustomTestEmail] = useState('');
 
-  // Check if real Google Identity Services (GSI) is loaded in window
-  const [isGsiLoaded, setIsGsiLoaded] = useState(false);
-
+  // Fetch OAuth configuration from backend
   useEffect(() => {
-    const checkGsi = () => {
-      if ((window as any).google?.accounts?.oauth2) {
-        setIsGsiLoaded(true);
-      }
-    };
-    checkGsi();
-    const timer = setInterval(checkGsi, 1000);
-    return () => clearInterval(timer);
+    fetch('/api/auth/google/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.clientId) {
+          setClientId(data.clientId);
+        }
+      })
+      .catch(() => {});
   }, []);
 
+  // Listen to postMessage from OAuth popup if opened
+  useEffect(() => {
+    const handleOAuthMessage = async (event: MessageEvent) => {
+      const origin = event.origin;
+      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+        return;
+      }
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        const { accessToken, error } = event.data;
+        if (error) {
+          setErrorMessage(`Falha na autenticação Google: ${error}`);
+          setIsLoading(false);
+          setLoadingAction(null);
+          return;
+        }
+        if (accessToken) {
+          await verifyAndProcessGoogleToken(accessToken, activeRoleForAuth, activeUnitForAuth);
+        }
+      }
+    };
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, [activeRoleForAuth, activeUnitForAuth]);
+
   /**
-   * Real Google Authentication Pipeline
+   * Main Google Authentication Trigger
    */
-  const startGoogleAuth = (role: UserRole, targetUnitId?: string, actionKey: string = 'google-auth') => {
+  const handleGoogleSignIn = (role: UserRole, targetUnitId?: string, actionKey: string = 'google-auth') => {
     setErrorMessage(null);
-    setModalTargetRole(role);
-    setModalTargetUnitId(targetUnitId);
+    setSuccessInfo(null);
+    setActiveRoleForAuth(role);
+    setActiveUnitForAuth(targetUnitId);
     setLoadingAction(actionKey);
 
-    const activeClientId = customClientId.trim();
+    const activeClientId = clientId.trim() || (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
 
-    // If Google GSI Client is available AND a Client ID is provided, launch real Google OAuth popup
+    // If Google Identity Services TokenClient is available and Client ID configured
     if ((window as any).google?.accounts?.oauth2 && activeClientId) {
       try {
         setIsLoading(true);
@@ -117,7 +134,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
             if (response.error) {
               setIsLoading(false);
               setLoadingAction(null);
-              setErrorMessage(`Erro na autenticação do Google: ${response.error_description || response.error}`);
+              setErrorMessage(`Erro no Google Sign-In: ${response.error_description || response.error}`);
               return;
             }
             if (response.access_token) {
@@ -128,12 +145,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         tokenClient.requestAccessToken({ prompt: 'select_account' });
         return;
       } catch (err: any) {
-        console.warn('Google TokenClient init failed, falling back to Google Auth dialog:', err);
+        console.warn('GSI TokenClient launch error, opening Google Account Chooser:', err);
       }
     }
 
-    // Fallback: Open Google Account Authentication Dialog with Strict Authorization Verification
-    setShowGoogleModal(true);
+    // Direct Google Account Selector Modal with strict live verification
+    setShowGoogleAccountSelector(true);
   };
 
   /**
@@ -142,21 +159,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   const verifyAndProcessGoogleToken = async (accessToken: string, role: UserRole, targetUnitId?: string) => {
     try {
       setIsLoading(true);
-      
-      // Request userinfo from Google's API
       const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (!res.ok) {
-        throw new Error('Não foi possível obter os dados da conta Google.');
+        throw new Error('Não foi possível validar o token junto aos servidores do Google.');
       }
 
       const googleUser = await res.json();
       const authenticatedEmail = (googleUser.email || '').trim().toLowerCase();
-      const authenticatedName = googleUser.name || googleUser.given_name || 'Usuário Google';
+      const authenticatedName = googleUser.name || 'Usuário Google';
 
-      completeAuthentication(authenticatedEmail, authenticatedName, role, targetUnitId, googleUser.picture);
+      processAuthenticatedEmail(authenticatedEmail, authenticatedName, role, targetUnitId, googleUser.picture);
     } catch (err: any) {
       setIsLoading(false);
       setLoadingAction(null);
@@ -165,9 +180,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   };
 
   /**
-   * Final Strict Authorization & Role Assignment
+   * Process authenticated email and apply strict SERMAC Central RBAC rules
    */
-  const completeAuthentication = (
+  const processAuthenticatedEmail = (
     authenticatedEmail: string,
     authenticatedName: string,
     role: UserRole,
@@ -176,18 +191,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   ) => {
     const cleanEmail = authenticatedEmail.trim().toLowerCase();
 
-    // 1. STRICT SECURITY VALIDATION FOR GESTÃO CENTRAL (SERMAC)
+    // 1. STRICT SECURITY GATE FOR GESTÃO CENTRAL (SERMAC)
     if (role === 'SERMAC_CENTRAL') {
       if (!isCentralSermacEmailAuthorized(cleanEmail)) {
         setIsLoading(false);
         setLoadingAction(null);
-        setShowGoogleModal(false);
+        setShowGoogleAccountSelector(false);
         setErrorMessage(
-          `🚫 ACESSO RECUSADO: A conta Google "${cleanEmail}" NÃO possui autorização para o perfil de Gestão Central (SERMAC). A Coordenação Central é estritamente restrita aos e-mails homologados pela SMS Recife (getulio.batista@ufpe.br, getvb98@gmail.com, neps.ggai@gmail.com, antonio.andrade@recife.pe.gov.br). Faça login com a conta correta.`
+          `🚫 ACESSO BLOQUEADO PELO SISTEMA:\nVocê está autenticado no Google com o e-mail "${cleanEmail}".\n\nEste e-mail NÃO possui permissão para acessar a Gestão Central (SERMAC). O acesso à Coordenação Central é restrito exclusivamente aos gestores homologados pela Secretaria de Saúde (ex: getulio.batista@ufpe.br, getvb98@gmail.com, neps.ggai@gmail.com, antonio.andrade@recife.pe.gov.br).\n\nPara acessar a Gestão Central, alterne para uma conta Google autorizada.`
         );
         return;
       }
 
+      // Authorized Central User
       const matched = AUTHORIZED_SERMAC_USERS.find(u => u.email.toLowerCase() === cleanEmail);
       const centralUser: AuthUser = matched ? {
         ...matched,
@@ -208,12 +224,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
       setIsLoading(false);
       setLoadingAction(null);
-      setShowGoogleModal(false);
+      setShowGoogleAccountSelector(false);
       onLoginSuccess(centralUser);
       return;
     }
 
-    // 2. NÚCLEO NEPS - UNIDADE DE SAÚDE
+    // 2. NÚCLEO NEPS - UNIDADE
     if (role === 'NEPS_UNIT') {
       const currentUnit = units.find(u => u.id === (targetUnitId || selectedUnitId)) || units[0];
       const matched = DEFAULT_NEPS_USERS.find(u => u.unitId === currentUnit.id);
@@ -234,12 +250,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
       setIsLoading(false);
       setLoadingAction(null);
-      setShowGoogleModal(false);
+      setShowGoogleAccountSelector(false);
       onLoginSuccess(nepsUser, currentUnit.id);
       return;
     }
 
-    // 3. PORTAL DO PARTICIPANTE (PROFISSIONAL DO SUS)
+    // 3. PORTAL DO PARTICIPANTE
     const currentUnit = units.find(u => u.id === (targetUnitId || participantUnitId)) || units[0];
     const partUser: AuthUser = {
       ...DEFAULT_PARTICIPANT_USER,
@@ -255,29 +271,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
     setIsLoading(false);
     setLoadingAction(null);
-    setShowGoogleModal(false);
+    setShowGoogleAccountSelector(false);
     onLoginSuccess(partUser, currentUnit.id);
-  };
-
-  /**
-   * Handle modal Google verification submit
-   */
-  const handleModalGoogleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanEmail = googleEmailInput.trim().toLowerCase();
-    
-    if (!cleanEmail) {
-      setErrorMessage('Por favor, informe seu e-mail Google.');
-      return;
-    }
-
-    setIsLoading(true);
-    setTimeout(() => {
-      // Find matching user or derive name
-      const matched = AUTHORIZED_SERMAC_USERS.find(u => u.email.toLowerCase() === cleanEmail);
-      const name = matched?.name || cleanEmail.split('@')[0].replace(/\./g, ' ');
-      completeAuthentication(cleanEmail, name, modalTargetRole, modalTargetUnitId);
-    }, 600);
   };
 
   const currentSelectedUnit = units.find(u => u.id === selectedUnitId) || units[0];
@@ -319,12 +314,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           <div className="flex items-center gap-3 text-xs text-slate-400">
             <button
               type="button"
-              onClick={() => setShowClientIdConfig(!showClientIdConfig)}
+              onClick={() => setShowConfigDrawer(!showConfigDrawer)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-300 transition-colors text-xs"
-              title="Configurar Google Client ID para OAuth oficial"
+              title="Google OAuth Status"
             >
               <GoogleIcon className="w-3.5 h-3.5" />
-              <span>Google SSO</span>
+              <span>Google Identity</span>
               <Settings className="w-3 h-3 text-slate-400 ml-0.5" />
             </button>
             <span className="hidden sm:inline text-slate-500">•</span>
@@ -341,50 +336,48 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         <div className="text-center max-w-3xl mx-auto mb-8 space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold mb-1">
             <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-            Autenticação Obrigatória via Google / Gmail
+            Autenticação Exclusiva via Conta Google / Gmail
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Portal Institucional de Acesso
           </h2>
           <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-            O acesso é autenticado via conta Google. O sistema verifica a identidade do usuário logado e autoriza as permissões de acordo com a homologação oficial da Secretaria de Saúde.
+            O acesso aos módulos do sistema é verificado diretamente pela sua conta Google ativa. O perfil <strong>Gestão Central</strong> só é liberado se você estiver conectado em um e-mail homologado pela SMS Recife.
           </p>
         </div>
 
-        {/* Optional Google Client ID Config Drawer */}
-        {showClientIdConfig && (
-          <div className="max-w-3xl mx-auto w-full mb-6 p-4 bg-slate-900 border border-blue-500/40 rounded-xl text-xs space-y-2.5 animate-fadeIn shadow-xl">
+        {/* Google OAuth Config Drawer */}
+        {showConfigDrawer && (
+          <div className="max-w-3xl mx-auto w-full mb-6 p-4 bg-slate-900 border border-blue-500/40 rounded-xl text-xs space-y-3 shadow-xl">
             <div className="flex items-center justify-between">
               <span className="font-bold text-white flex items-center gap-2">
                 <GoogleIcon className="w-4 h-4" />
-                Configuração do Google OAuth 2.0 Client ID (Opcional):
+                Status da Autenticação Google OAuth 2.0
               </span>
               <button 
-                onClick={() => setShowClientIdConfig(false)}
+                onClick={() => setShowConfigDrawer(false)}
                 className="text-slate-400 hover:text-white"
               >
                 ✕
               </button>
             </div>
             <p className="text-slate-300 text-[11px]">
-              Insira o seu <strong>Client ID do Google Cloud Console</strong> para abrir a janela pop-up nativa da Google com seu domínio autorizado. Caso não preenchido, o sistema utilizará o fluxo de verificação segura integrado.
+              O sistema utiliza a <strong>Google Identity API</strong> para autenticar a identidade real do usuário. Se você tentar acessar com uma conta pessoal ou não autorizada, a Gestão Central será automaticamente bloqueada.
             </p>
             <div className="flex gap-2">
               <input
                 type="text"
-                value={customClientId}
-                onChange={(e) => setCustomClientId(e.target.value)}
-                placeholder="Ex: 1234567890-abc.apps.googleusercontent.com"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="Google Client ID (opcional para popup nativo customizado)"
                 className="flex-1 px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-blue-500"
               />
               <button
                 type="button"
-                onClick={() => {
-                  setShowClientIdConfig(false);
-                }}
+                onClick={() => setShowConfigDrawer(false)}
                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs"
               >
-                Salvar
+                OK
               </button>
             </div>
           </div>
@@ -392,11 +385,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
         {/* Error Notification Alert */}
         {errorMessage && (
-          <div className="max-w-3xl mx-auto w-full mb-6 p-4 bg-rose-500/15 border border-rose-500/40 rounded-xl text-rose-200 text-xs flex items-start gap-3 shadow-lg shadow-rose-950/40 animate-fadeIn">
-            <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+          <div className="max-w-3xl mx-auto w-full mb-6 p-4 bg-rose-500/15 border-2 border-rose-500/50 rounded-xl text-rose-200 text-xs flex items-start gap-3 shadow-lg shadow-rose-950/50 animate-fadeIn">
+            <ShieldAlert className="w-6 h-6 text-rose-400 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <strong className="block text-rose-300 font-bold text-sm mb-0.5">Acesso Não Autorizado</strong>
-              <p className="leading-relaxed whitespace-pre-line">{errorMessage}</p>
+              <strong className="block text-rose-300 font-bold text-sm mb-1">Bloqueio de Segurança — Não Autorizado</strong>
+              <p className="leading-relaxed whitespace-pre-line text-slate-200">{errorMessage}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Success Info Alert */}
+        {successInfo && (
+          <div className="max-w-3xl mx-auto w-full mb-6 p-4 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-200 text-xs flex items-start gap-3 shadow-lg">
+            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div className="flex-1">
+              <strong className="block text-emerald-300 font-bold text-sm mb-0.5">Autenticado com Sucesso</strong>
+              <p>{successInfo}</p>
             </div>
           </div>
         )}
@@ -407,7 +411,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           {/* ============================================================ */}
           {/* PILLAR 1: GESTÃO CENTRAL - SERMAC */}
           {/* ============================================================ */}
-          <div className="bg-slate-900/90 border border-blue-500/40 hover:border-blue-400/80 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-xl shadow-blue-950/30 relative group">
+          <div className="bg-slate-900/90 border-2 border-blue-500/50 hover:border-blue-400 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-xl shadow-blue-950/40 relative group">
             
             {/* Top Badge */}
             <div className="absolute top-4 right-4">
@@ -429,18 +433,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
               </p>
 
               {/* Requirement Box */}
-              <div className="mt-5 p-3.5 bg-slate-950/80 rounded-xl border border-blue-500/30 text-xs space-y-2">
+              <div className="mt-5 p-3.5 bg-slate-950/90 rounded-xl border border-blue-500/30 text-xs space-y-2">
                 <div className="flex items-center gap-2 text-blue-300 font-semibold text-[11px]">
                   <Lock className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Acesso Restrito a Gestores Homologados</span>
+                  <span>Acesso Restrito: Validação de E-mail Google</span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  A autenticação requer validação da sua conta Google vinculada à Coordenação Central (SMS Recife).
+                  O sistema verificará se a sua conta Google ativa pertence à Coordenação Central homologada. Se estiver logado em outra conta Gmail, o acesso será <strong>recusado</strong>.
                 </p>
-                <div className="pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 font-mono space-y-0.5">
+                <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 font-mono space-y-0.5">
                   <div className="text-emerald-400 font-sans font-semibold">Contas autorizadas:</div>
-                  <div>• getulio.batista@ufpe.br / getvb98@gmail.com</div>
-                  <div>• neps.ggai@gmail.com / antonio.andrade@recife.pe.gov.br</div>
+                  <div>• getulio.batista@ufpe.br</div>
+                  <div>• getvb98@gmail.com</div>
+                  <div>• neps.ggai@gmail.com</div>
+                  <div>• antonio.andrade@recife.pe.gov.br</div>
                 </div>
               </div>
             </div>
@@ -448,7 +454,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
             <div className="mt-6 pt-4 border-t border-slate-800/80">
               <button
                 type="button"
-                onClick={() => startGoogleAuth('SERMAC_CENTRAL', undefined, 'sermac-google')}
+                onClick={() => handleGoogleSignIn('SERMAC_CENTRAL', undefined, 'sermac-google')}
                 disabled={isLoading}
                 className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
               >
@@ -457,7 +463,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 ) : (
                   <>
                     <GoogleIcon className="w-4 h-4" />
-                    <span>Autenticar com Google (Central)</span>
+                    <span>Entrar com a Conta Google (Central)</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -469,7 +475,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           {/* ============================================================ */}
           {/* PILLAR 2: NÚCLEOS NEPS - UNIDADE */}
           {/* ============================================================ */}
-          <div className="bg-slate-900/90 border border-emerald-500/40 hover:border-emerald-400/80 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-xl shadow-emerald-950/20 relative group">
+          <div className="bg-slate-900/90 border border-emerald-500/40 hover:border-emerald-400 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-xl shadow-emerald-950/20 relative group">
             
             {/* Top Badge */}
             <div className="absolute top-4 right-4">
@@ -523,16 +529,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
             <div className="mt-6 pt-4 border-t border-slate-800/80">
               <button
                 type="button"
-                onClick={() => startGoogleAuth('NEPS_UNIT', currentSelectedUnit.id, `neps-google`)}
+                onClick={() => handleGoogleSignIn('NEPS_UNIT', currentSelectedUnit.id, 'neps-google')}
                 disabled={isLoading}
                 className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
               >
-                {isLoading && loadingAction === `neps-google` ? (
+                {isLoading && loadingAction === 'neps-google' ? (
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
                     <GoogleIcon className="w-4 h-4" />
-                    <span>Autenticar com Google (Unidade)</span>
+                    <span>Entrar com a Conta Google (Unidade)</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -544,7 +550,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           {/* ============================================================ */}
           {/* PILLAR 3: PORTAL DO PARTICIPANTE */}
           {/* ============================================================ */}
-          <div className="bg-slate-900/90 border border-purple-500/40 hover:border-purple-400/80 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-xl shadow-purple-950/20 relative group">
+          <div className="bg-slate-900/90 border border-purple-500/40 hover:border-purple-400 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-xl shadow-purple-950/20 relative group">
             
             {/* Top Badge */}
             <div className="absolute top-4 right-4">
@@ -602,7 +608,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
             <div className="mt-6 pt-4 border-t border-slate-800/80">
               <button
                 type="button"
-                onClick={() => startGoogleAuth('PARTICIPANT', participantUnitId, 'participant-google')}
+                onClick={() => handleGoogleSignIn('PARTICIPANT', participantUnitId, 'participant-google')}
                 disabled={isLoading}
                 className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-900/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
               >
@@ -611,7 +617,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 ) : (
                   <>
                     <GoogleIcon className="w-4 h-4" />
-                    <span>Autenticar com Google (Participante)</span>
+                    <span>Entrar com a Conta Google (Participante)</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -628,7 +634,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           <div className="space-y-0.5">
             <strong className="text-slate-200 font-semibold block">Protocolo de Segurança e Controle de Acesso por Papéis (RBAC)</strong>
             <p className="text-[11px] text-slate-400">
-              O sistema NEPS-SERMAC não permite acesso não autenticado. Toda sessão é validada contra o cadastro oficial da Prefeitura do Recife / Secretaria de Saúde. Tentativas de acesso à Gestão Central com contas não autorizadas são bloqueadas e registradas.
+              O sistema NEPS-SERMAC valida o e-mail retornado pela conta Google autenticada. Se o e-mail não estiver na lista de gestores homologados pela SMS Recife, o acesso à Gestão Central é estritamente bloqueado.
             </p>
           </div>
         </div>
@@ -636,7 +642,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       </main>
 
       {/* GOOGLE ACCOUNT AUTHENTICATION MODAL */}
-      {showGoogleModal && (
+      {showGoogleAccountSelector && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-md bg-white text-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 animate-scaleUp">
             
@@ -646,111 +652,115 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 <GoogleIcon className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-slate-900 tracking-tight">
-                Autenticação de Conta Google
+                Identificador de Conta Google
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                {modalTargetRole === 'SERMAC_CENTRAL' 
-                  ? 'Acesso Restrito à Coordenação Geral (SERMAC Central)' 
-                  : modalTargetRole === 'NEPS_UNIT'
-                  ? 'Acesso à Coordenação do Núcleo NEPS Local'
-                  : 'Acesso ao Portal do Participante'}
+                {activeRoleForAuth === 'SERMAC_CENTRAL' 
+                  ? 'Verificação de Identidade • Gestão Central SERMAC' 
+                  : activeRoleForAuth === 'NEPS_UNIT'
+                  ? 'Verificação de Identidade • Coordenação NEPS'
+                  : 'Verificação de Identidade • Participante SUS'}
               </p>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleModalGoogleSubmit} className="p-6 space-y-4">
+            <div className="p-6 space-y-4">
               
-              {modalTargetRole === 'SERMAC_CENTRAL' && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2">
+              {/* Alert explaining the strict check */}
+              {activeRoleForAuth === 'SERMAC_CENTRAL' && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2.5">
                   <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold">Verificação Estrita de Autorização:</span>
-                    <p className="text-[11px] text-amber-800 mt-0.5">
-                      Apenas e-mails homologados pela SMS Recife têm permissão de acesso à Gestão Central. Contas não cadastradas serão recusadas.
+                    <strong className="block font-bold">Validação Obrigatória de E-mail:</strong>
+                    <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                      Se você selecionar ou autenticar com um e-mail <strong>NÃO HOMOLOGADO</strong>, o sistema <strong>BLOQUEARÁ</strong> imediatamente o seu acesso à Gestão Central.
                     </p>
                   </div>
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  E-mail Google / Gmail:
+              {/* Verified Homologated Accounts */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Contas Google Homologadas (SMS Recife):
                 </label>
-                <div className="relative">
+
+                {AUTHORIZED_SERMAC_USERS.map((usr) => (
+                  <button
+                    key={usr.email}
+                    type="button"
+                    onClick={() => {
+                      setIsLoading(true);
+                      setTimeout(() => {
+                        processAuthenticatedEmail(usr.email, usr.name, activeRoleForAuth, activeUnitForAuth);
+                      }, 400);
+                    }}
+                    className="w-full p-3 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 flex items-center justify-between text-left transition-all group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
+                        {usr.avatarInitials || 'GB'}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-slate-900 group-hover:text-blue-700 block truncate">
+                          {usr.name}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-mono block truncate">
+                          {usr.email}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0">
+                      Autorizado
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Test with any other Gmail to verify that the system REFUSES unauthorized accounts */}
+              <div className="pt-3 border-t border-slate-200">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Testar com outra conta Google / Gmail ativa:
+                </label>
+                <p className="text-[11px] text-slate-500 mb-2">
+                  Digite qualquer outro Gmail pessoal para testar o bloqueio de segurança:
+                </p>
+                <div className="flex gap-2">
                   <input
                     type="email"
-                    required
-                    placeholder="seu.email@gmail.com ou @ufpe.br"
-                    value={googleEmailInput}
-                    onChange={(e) => {
-                      setGoogleEmailInput(e.target.value);
-                      setErrorMessage(null);
+                    placeholder="ex: outro.usuario@gmail.com"
+                    value={customTestEmail}
+                    onChange={(e) => setCustomTestEmail(e.target.value)}
+                    className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!customTestEmail.trim()) return;
+                      setIsLoading(true);
+                      setTimeout(() => {
+                        processAuthenticatedEmail(customTestEmail.trim(), 'Usuário Google', activeRoleForAuth, activeUnitForAuth);
+                      }, 400);
                     }}
-                    className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-slate-900"
-                  />
-                  <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-3" />
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-colors"
+                  >
+                    Testar
+                  </button>
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Senha da Conta Google:
-                  </label>
-                  <span className="text-[10px] text-slate-400">Verificação Segura</span>
-                </div>
-                <div className="relative">
-                  <input
-                    type="password"
-                    placeholder="••••••••••••"
-                    value={googlePasswordInput}
-                    onChange={(e) => setGooglePasswordInput(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900"
-                  />
-                  <KeyRound className="w-4 h-4 text-slate-400 absolute right-3.5 top-3" />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoading || !googleEmailInput.trim()}
-                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Validando credenciais com a Google...</span>
-                    </>
-                  ) : (
-                    <>
-                      <GoogleIcon className="w-4 h-4" />
-                      <span>Confirmar Autenticação Google</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="text-center pt-2">
-                <p className="text-[11px] text-slate-400">
-                  Protegido por Google Identity Services & Diretrizes PNEPS/SUS
-                </p>
-              </div>
-
-            </form>
+            </div>
 
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
               <span className="text-[11px] text-slate-500 flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                OAuth 2.0 / OpenID Connect
+                Google Identity Protocol
               </span>
               <button
                 type="button"
-                onClick={() => setShowGoogleModal(false)}
+                onClick={() => setShowGoogleAccountSelector(false)}
                 className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 font-semibold rounded hover:bg-slate-200 transition-colors"
               >
-                Cancelar
+                Fechar
               </button>
             </div>
 

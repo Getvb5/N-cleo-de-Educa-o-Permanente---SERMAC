@@ -73,6 +73,56 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Google OAuth Config Endpoint
+  app.get("/api/auth/google/config", (req, res) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "";
+    res.json({
+      clientId,
+      appUrl: process.env.APP_URL || ""
+    });
+  });
+
+  // OAuth Callback Handler
+  app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
+    const { code, error, access_token } = req.query;
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Autenticação Google Concluída</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+            .box { padding: 2rem; background: #1e293b; border-radius: 1rem; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <h3 style="margin: 0 0 0.5rem 0; color: #60a5fa;">Autenticação Google Processada</h3>
+            <p style="margin: 0; font-size: 0.875rem; color: #94a3b8;">Fechando janela e retornando ao sistema NEPS...</p>
+          </div>
+          <script>
+            try {
+              if (window.opener) {
+                window.opener.postMessage({ 
+                  type: 'OAUTH_AUTH_SUCCESS', 
+                  code: ${JSON.stringify(code || '')},
+                  accessToken: ${JSON.stringify(access_token || '')},
+                  error: ${JSON.stringify(error || '')}
+                }, '*');
+                setTimeout(function() { window.close(); }, 300);
+              } else {
+                window.location.href = '/';
+              }
+            } catch(e) {
+              console.error(e);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+  });
+
   // Google OAuth Token Verification Endpoint
   app.post("/api/auth/google/verify", async (req, res) => {
     try {
