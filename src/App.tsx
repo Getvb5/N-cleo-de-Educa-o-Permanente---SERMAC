@@ -38,6 +38,7 @@ import { PaepsPlanModal } from './components/PaepsPlanModal';
 import { WorkforceCensusModal } from './components/WorkforceCensusModal';
 import { CancelActionModal } from './components/CancelActionModal';
 import { AuthScreen } from './components/AuthScreen';
+import { signOutGoogle } from './lib/firebase';
 
 export default function App() {
   // Authentication & Role State
@@ -105,7 +106,8 @@ export default function App() {
   };
 
   // Handle Logout
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOutGoogle();
     setCurrentUser(null);
     setIsLoggedIn(false);
     saveStoredUser(null);
