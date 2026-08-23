@@ -87,9 +87,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       setShowGoogleModal(false);
 
       if (role === 'SERMAC_CENTRAL') {
+        // STRICT AUTHORIZATION CHECK FOR GESTÃO CENTRAL
         if (!isCentralSermacEmailAuthorized(cleanEmail)) {
           setErrorMessage(
-            `Acesso Restrito: O e-mail Google "${cleanEmail}" não possui autorização para a Gestão Central - SERMAC. Utilize: getulio.batista@ufpe.br, neps.ggai@gmail.com ou antonio.andrade@recife.pe.gov.br`
+            `Acesso Negado: O e-mail Google "${cleanEmail}" não consta no rol de gestores autorizados para a Gestão Central - SERMAC. O acesso à coordenação central é estritamente restrito a contas homologadas (ex: getulio.batista@ufpe.br, getvb98@gmail.com, neps.ggai@gmail.com, antonio.andrade@recife.pe.gov.br).`
           );
           return;
         }
@@ -97,6 +98,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         const matched = AUTHORIZED_SERMAC_USERS.find(u => u.email.toLowerCase() === cleanEmail);
         const authedUser: AuthUser = matched ? {
           ...matched,
+          email: cleanEmail,
           authProvider: 'google'
         } : {
           id: `usr-sermac-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
@@ -156,9 +158,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       const matched = AUTHORIZED_SERMAC_USERS.find(u => u.email.toLowerCase() === clean);
       executeGoogleLogin(clean, matched?.name || 'Gestor SERMAC', 'SERMAC_CENTRAL', undefined, 'custom-email');
     } else {
-      // Prompt modal or default to unit / participant
-      setModalTargetRole('NEPS_UNIT');
-      setShowGoogleModal(true);
+      // If not in SERMAC whitelist, check if it belongs to any unit or alert
+      const unitMatch = units.find(u => u.coordinatorEmail.toLowerCase() === clean);
+      if (unitMatch) {
+        executeGoogleLogin(clean, unitMatch.coordinatorName, 'NEPS_UNIT', unitMatch.id, 'custom-email');
+      } else {
+        setErrorMessage(
+          `O e-mail "${clean}" não está na lista de Gestores Centrais da SERMAC. Se você é um profissional de saúde, acesse pelo Portal do Participante ou selecione sua Unidade NEPS.`
+        );
+      }
     }
   };
 
@@ -556,54 +564,86 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 Fazer login com o Google
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                para acessar o sistema <strong>NEPS - SERMAC</strong>
+                {modalTargetRole === 'SERMAC_CENTRAL' 
+                  ? 'Acesso restrito à Coordenação Geral (SERMAC Central)' 
+                  : 'Acesso ao sistema NEPS - SERMAC'}
               </p>
             </div>
 
-            <div className="p-5 space-y-3 max-h-[380px] overflow-y-auto">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
-                Contas Google Disponíveis:
-              </p>
-
-              {/* SERMAC Central Accounts */}
-              <div className="space-y-1.5">
-                {AUTHORIZED_SERMAC_USERS.map((usr) => (
+            <div className="p-5 space-y-4 max-h-[420px] overflow-y-auto">
+              
+              {/* Form to enter custom Google account */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Digitar conta Google / Gmail:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="ex: getulio.batista@ufpe.br ou getvb98@gmail.com"
+                    value={customEmail}
+                    onChange={(e) => setCustomEmail(e.target.value)}
+                    className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 font-mono"
+                  />
                   <button
-                    key={usr.email}
                     type="button"
-                    onClick={() => executeGoogleLogin(usr.email, usr.name, 'SERMAC_CENTRAL')}
-                    className="w-full p-3 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 flex items-center gap-3 text-left transition-all group"
+                    onClick={() => {
+                      if (!customEmail.trim()) return;
+                      executeGoogleLogin(customEmail.trim(), '', modalTargetRole);
+                    }}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs"
                   >
-                    <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
-                      {usr.avatarInitials || 'GC'}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-900 group-hover:text-blue-700">{usr.name}</span>
-                        <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-semibold">Central</span>
-                      </div>
-                      <span className="text-[11px] text-slate-500 font-mono block truncate">{usr.email}</span>
-                    </div>
+                    Entrar
                   </button>
-                ))}
+                </div>
+              </div>
 
-                {/* NEPS Unit Account */}
-                <button
-                  type="button"
-                  onClick={() => executeGoogleLogin(currentSelectedUnit.coordinatorEmail, currentSelectedUnit.coordinatorName, 'NEPS_UNIT', currentSelectedUnit.id)}
-                  className="w-full p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 flex items-center gap-3 text-left transition-all group"
-                >
-                  <div className="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
-                    UN
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 group-hover:text-emerald-700">{currentSelectedUnit.coordinatorName}</span>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-semibold">{currentSelectedUnit.code}</span>
-                    </div>
-                    <span className="text-[11px] text-slate-500 font-mono block truncate">{currentSelectedUnit.coordinatorEmail}</span>
-                  </div>
-                </button>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1 mb-2">
+                  {modalTargetRole === 'SERMAC_CENTRAL' ? 'Gestores Centrais Homologados:' : 'Contas Disponíveis:'}
+                </p>
+
+                {/* SERMAC Central Accounts */}
+                <div className="space-y-1.5">
+                  {AUTHORIZED_SERMAC_USERS.map((usr) => (
+                    <button
+                      key={usr.email}
+                      type="button"
+                      onClick={() => executeGoogleLogin(usr.email, usr.name, 'SERMAC_CENTRAL')}
+                      className="w-full p-3 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 flex items-center gap-3 text-left transition-all group"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
+                        {usr.avatarInitials || 'GC'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-900 group-hover:text-blue-700">{usr.name}</span>
+                          <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-semibold">Central</span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-mono block truncate">{usr.email}</span>
+                      </div>
+                    </button>
+                  ))}
+
+                  {modalTargetRole !== 'SERMAC_CENTRAL' && (
+                    <button
+                      type="button"
+                      onClick={() => executeGoogleLogin(currentSelectedUnit.coordinatorEmail, currentSelectedUnit.coordinatorName, 'NEPS_UNIT', currentSelectedUnit.id)}
+                      className="w-full p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 flex items-center gap-3 text-left transition-all group"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
+                        UN
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-900 group-hover:text-emerald-700">{currentSelectedUnit.coordinatorName}</span>
+                          <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-semibold">{currentSelectedUnit.code}</span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-mono block truncate">{currentSelectedUnit.coordinatorEmail}</span>
+                      </div>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

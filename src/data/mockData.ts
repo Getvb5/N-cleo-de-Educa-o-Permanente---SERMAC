@@ -1305,6 +1305,7 @@ export function saveStoredDNC(dnc: TrainingNeedDNC[]) {
 
 export const AUTHORIZED_CENTRAL_SERMAC_EMAILS = [
   'getulio.batista@ufpe.br',
+  'getvb98@gmail.com',
   'neps.ggai@gmail.com',
   'antonio.andrade@recife.pe.gov.br'
 ] as const;
@@ -1320,6 +1321,15 @@ export const AUTHORIZED_SERMAC_USERS: AuthUser[] = [
     id: 'usr-sermac-getulio',
     name: 'Prof. Getúlio Batista',
     email: 'getulio.batista@ufpe.br',
+    role: 'SERMAC_CENTRAL',
+    registrationNumber: 'UFPE/SMS-0014',
+    jobTitle: 'Gestor & Pesquisador EPS • UFPE / SERMAC',
+    avatarInitials: 'GB'
+  },
+  {
+    id: 'usr-sermac-getulio-gmail',
+    name: 'Prof. Getúlio Batista',
+    email: 'getvb98@gmail.com',
     role: 'SERMAC_CENTRAL',
     registrationNumber: 'UFPE/SMS-0014',
     jobTitle: 'Gestor & Pesquisador EPS • UFPE / SERMAC',
