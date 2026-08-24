@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   registrationNumber: string;
+  cpf?: string;
   unitId?: string;
   unitName?: string;
   avatarInitials?: string;
@@ -46,13 +47,13 @@ export interface HealthUnit {
 
 export interface CnesProfessional {
   id: string;
-  cpf: string;
+  cpf?: string;
   cns: string; // Cartão Nacional de Saúde
   name: string;
   cboCode: string; // Código CBO (ex: 2235-05, 2251-25)
   cboDescription: string;
   professionalCategory: ProfessionalCategory;
-  councilRegistration?: string; // ex: COREN-PE 123456, CRM-PE 65432
+  councilRegistration?: string;
   cnesUnitCode: string; // Código CNES da unidade de lotação
   unitId: string;
   unitName: string;
@@ -307,6 +308,8 @@ export interface AttendanceRecord {
   feedback?: FeedbackData;
   certificateIssued: boolean;
   certificateCode: string;
+  userId?: string;
+  userEmail?: string;
 }
 
 export interface TrainingNeedDNC {

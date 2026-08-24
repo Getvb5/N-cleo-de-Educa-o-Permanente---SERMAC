@@ -1,14 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   TrainingAction, 
   AttendanceRecord, 
   HealthUnit, 
   ProfessionalCategory,
-  FeedbackData 
+  FeedbackData,
+  CnesProfessional,
+  AuthUser
 } from '../types';
 import { 
   ALL_PROFESSIONAL_CATEGORIES 
 } from '../data/mockData';
+import { lookupCnesProfessionalApi, formatCpf } from '../utils/cnesService';
 import confetti from 'canvas-confetti';
 import { 
   UserCheck, 
@@ -24,21 +27,31 @@ import {
   Building, 
   ShieldCheck,
   Check,
-  ChevronRight
+  ChevronRight,
+  RefreshCw,
+  AlertCircle,
+  Lock,
+  User,
+  CheckCircle2,
+  BookOpen
 } from 'lucide-react';
 
 interface ParticipantPortalProps {
+  currentUser?: AuthUser | null;
   actions: TrainingAction[];
   attendance: AttendanceRecord[];
   units: HealthUnit[];
-  cnesProfessionals?: import('../types').CnesProfessional[];
-  onRegisterCheckin: (record: Omit<AttendanceRecord, 'id' | 'certificateCode'>) => void;
+  cnesProfessionals?: CnesProfessional[];
+  onRegisterCheckin: (record: AttendanceRecord | Omit<AttendanceRecord, 'id' | 'certificateCode'>) => void;
   onSaveFeedback: (attendanceId: string, feedback: FeedbackData) => void;
   onOpenCertificate: (record: AttendanceRecord) => void;
   onOpenCnesModal?: () => void;
+  onAddCnesProfessional?: (newProf: CnesProfessional) => void;
+  onUpdateCurrentUser?: (updatedUser: AuthUser) => void;
 }
 
 export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
+  currentUser,
   actions = [],
   attendance = [],
   units = [],
@@ -46,17 +59,97 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
   onRegisterCheckin,
   onSaveFeedback,
   onOpenCertificate,
-  onOpenCnesModal
+  onOpenCnesModal,
+  onAddCnesProfessional,
+  onUpdateCurrentUser
 }) => {
-  // Check-in Form State
+  // Check-in Form State initialized with logged-in user if available
   const [pin, setPin] = useState('');
   const [selectedActionId, setSelectedActionId] = useState('');
-  const [participantName, setParticipantName] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [regNumber, setRegNumber] = useState('');
+  const [participantName, setParticipantName] = useState(currentUser?.name || '');
+  const [cpf, setCpf] = useState(currentUser?.cpf || '');
+  const [regNumber, setRegNumber] = useState(currentUser?.registrationNumber || '');
   const [category, setCategory] = useState<ProfessionalCategory>('Enfermeiro(a)');
-  const [participantUnitId, setParticipantUnitId] = useState(units[0]?.id || '');
-  const [cnesMatch, setCnesMatch] = useState<import('../types').CnesProfessional | null>(null);
+  const [participantUnitId, setParticipantUnitId] = useState(currentUser?.unitId || units[0]?.id || '');
+  const [cnesMatch, setCnesMatch] = useState<CnesProfessional | null>(null);
+  const [isSearchingCnes, setIsSearchingCnes] = useState(false);
+  const [cnesLookupFeedback, setCnesLookupFeedback] = useState<string | null>(null);
+  
+  // Track IDs of certificates issued in current session to ensure instantaneous Passport presence
+  const [sessionIssuedIds, setSessionIssuedIds] = useState<Set<string>>(() => new Set());
+
+  // Sync user info if currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.name && !participantName) setParticipantName(currentUser.name);
+      if (currentUser.registrationNumber && !regNumber) setRegNumber(currentUser.registrationNumber);
+      if (currentUser.cpf && !cpf) setCpf(currentUser.cpf);
+      if (currentUser.unitId) setParticipantUnitId(currentUser.unitId);
+    }
+  }, [currentUser]);
+
+  // Live lookup logic for CNES
+  const handlePerformCnesLookup = async (inputVal?: string) => {
+    const rawValue = (inputVal || cpf || participantName).trim();
+    const cleanVal = rawValue.replace(/\D/g, '');
+    if (!rawValue) {
+      alert('Por favor digite o Cartão SUS (CNS) ou Nome para consulta no CNES.');
+      return;
+    }
+
+    // 1. Check local list
+    const localMatch = cnesProfessionals.find(p => 
+      (cleanVal && p.cns === cleanVal) || 
+      (cleanVal && p.cns.includes(cleanVal)) ||
+      (p.name && p.name.toLowerCase().includes(rawValue.toLowerCase()))
+    );
+    if (localMatch) {
+      setCnesMatch(localMatch);
+      setParticipantName(localMatch.name);
+      setCategory(localMatch.professionalCategory);
+      setRegNumber(`CNS-${localMatch.cns.slice(-6)}`);
+      setParticipantUnitId(localMatch.unitId);
+      setCnesLookupFeedback(`Profissional localizado no CNES da unidade ${localMatch.unitName}`);
+      return;
+    }
+
+    // 2. Query live CNES API
+    setIsSearchingCnes(true);
+    setCnesLookupFeedback(null);
+
+    try {
+      const selectedUnit = units.find(u => u.id === participantUnitId) || units[0];
+      const result = await lookupCnesProfessionalApi(cleanVal || rawValue, {
+        unitId: selectedUnit?.id,
+        unitName: selectedUnit?.name,
+        cnesCode: selectedUnit?.cnes,
+        nameHint: participantName || (!cleanVal ? rawValue : undefined),
+        categoryHint: category || undefined
+      });
+
+      if (result) {
+        setCnesMatch(result);
+        setParticipantName(result.name);
+        setCategory(result.professionalCategory);
+        setRegNumber(`CNS-${result.cns.slice(-6)}`);
+        if (result.unitId) {
+          setParticipantUnitId(result.unitId);
+        }
+        setCnesLookupFeedback(`Cadastro recuperado com sucesso do Cadastro Nacional CNES / DATASUS!`);
+
+        // Save in global database
+        if (onAddCnesProfessional) {
+          onAddCnesProfessional(result);
+        }
+      } else {
+        setCnesLookupFeedback('Profissional não localizado no CNES com os dados informados.');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearchingCnes(false);
+    }
+  };
   
   // Feedback Form State
   const [activeCheckinRecord, setActiveCheckinRecord] = useState<AttendanceRecord | null>(null);
@@ -76,21 +169,37 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
     return actions.filter(a => a.status === 'em_andamento' || a.status === 'planejada' || a.status === 'concluida');
   }, [actions]);
 
+  // Real-time matched action based on entered PIN
+  const pinMatchedAction = useMemo(() => {
+    const cleanPin = pin.trim();
+    if (cleanPin.length !== 4) return null;
+    return actions.find(a => a.checkinPin.trim() === cleanPin && a.status !== 'cancelada') || null;
+  }, [pin, actions]);
+
   const handleCheckinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!participantName || !cpf) {
-      alert('Por favor preencha seu nome e CPF.');
+    const cleanPin = pin.trim();
+
+    if (!cleanPin) {
+      alert('Por favor, informe o código PIN de 4 dígitos gerado pelo facilitador / Coordenação NEPS.');
       return;
     }
 
-    // Find action by PIN or selected action
-    let targetAction = actions.find(a => a.checkinPin.trim() === pin.trim());
-    if (!targetAction && selectedActionId) {
-      targetAction = actions.find(a => a.id === selectedActionId);
+    if (cleanPin.length !== 4) {
+      alert('O PIN de confirmação de presença deve ter exatamente 4 dígitos numéricos.');
+      return;
     }
 
+    // STRICT PIN VALIDATION: Must match an existing action's checkinPin
+    const targetAction = actions.find(a => a.checkinPin.trim() === cleanPin && a.status !== 'cancelada');
+
     if (!targetAction) {
-      alert('Código PIN ou ação não encontrada. Verifique o código de 4 dígitos informado pelo instrutor.');
+      alert(`PIN "${cleanPin}" inválido! Este código não corresponde a nenhuma ação educativa ativa ou cadastrada pela Coordenação NEPS. Solicite o PIN correto ao facilitador da capacitação.`);
+      return;
+    }
+
+    if (!participantName.trim() || !cpf.trim()) {
+      alert('Por favor preencha seu nome completo e CPF para emissão do certificado autenticado.');
       return;
     }
 
@@ -107,16 +216,25 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
       // ignore
     }
 
-    const newRecordData = {
+    const certCode = `CERT-${targetAction.code}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newRecordId = `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const effectiveName = participantName.trim() || currentUser?.name || 'Profissional SUS';
+    const effectiveCpf = cpf.trim() || currentUser?.cpf || '';
+    const effectiveReg = regNumber.trim() || currentUser?.registrationNumber || `SUS-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newRecordData: AttendanceRecord = {
+      id: newRecordId,
+      userId: currentUser?.id,
+      userEmail: currentUser?.email,
       actionId: targetAction.id,
       actionTitle: targetAction.title,
       actionCode: targetAction.code,
       thematicAxis: targetAction.thematicAxis,
       unitId: targetAction.unitId,
       unitName: targetAction.unitName,
-      participantName,
-      cpf,
-      registrationNumber: regNumber || `SUS-${Math.floor(1000 + Math.random() * 9000)}`,
+      participantName: effectiveName,
+      cpf: effectiveCpf,
+      registrationNumber: effectiveReg,
       professionalCategory: category,
       participantUnitId: selectedUnit?.id || targetAction.unitId,
       participantUnitName: selectedUnit?.name || targetAction.unitName,
@@ -125,24 +243,31 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
       checkinTimestamp: new Date().toISOString(),
       status: 'presente' as const,
       certificateIssued: true,
+      certificateCode: certCode,
       feedback: {
         satisfactionRating: 5,
         applicabilityRating: 5,
         instructorRating: 5,
         contentClarityRating: 5,
-        comment: 'Presença confirmada pelo próprio profissional no auto-checkin.'
+        comment: 'Presença confirmada pelo próprio profissional via PIN oficial do NEPS.'
       }
     };
 
     onRegisterCheckin(newRecordData);
+    setActiveCheckinRecord(newRecordData);
+    setSessionIssuedIds(prev => new Set([...prev, newRecordId]));
 
-    // Set for direct feedback flow
-    const createdRecord: AttendanceRecord = {
-      ...newRecordData,
-      id: `att-${Date.now()}`,
-      certificateCode: `CERT-${targetAction.code}-${Math.floor(1000 + Math.random() * 9000)}`
-    };
-    setActiveCheckinRecord(createdRecord);
+    // Sync updated name/cpf/registration with user profile
+    if (currentUser && onUpdateCurrentUser) {
+      onUpdateCurrentUser({
+        ...currentUser,
+        name: effectiveName,
+        cpf: effectiveCpf,
+        registrationNumber: effectiveReg,
+        unitId: selectedUnit?.id || currentUser.unitId,
+        unitName: selectedUnit?.name || currentUser.unitName
+      });
+    }
 
     setPin('');
   };
@@ -151,33 +276,139 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
     e.preventDefault();
     if (!activeCheckinRecord) return;
 
-    onSaveFeedback(activeCheckinRecord.id, {
+    const feedbackPayload = {
       satisfactionRating,
       applicabilityRating,
       instructorRating,
       contentClarityRating,
       comment,
       suggestions
-    });
+    };
 
+    onSaveFeedback(activeCheckinRecord.id, feedbackPayload);
+    setActiveCheckinRecord(prev => prev ? { ...prev, feedback: feedbackPayload } : null);
     setFeedbackSuccess(true);
   };
 
-  // Filtered Passport
+  // Filter only certificates for the current logged-in professional
+  const userFilteredAttendance = useMemo(() => {
+    if (!currentUser) return attendance;
+    
+    // Normalize string removing diacritics, prefixes, punctuation
+    const sanitize = (str: string) => 
+      str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/^(dr\.|dra\.|enf\.|t[eé]c\.|prof\.|profa\.|farm\.|biom[eé]d\.|acs|ace|med\.|nutri\.|fisiot\.|psic\.)\s+/gi, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const currentCleanName = sanitize(currentUser.name || '');
+    const formCleanName = sanitize(participantName || '');
+    const currentEmail = (currentUser.email || '').trim().toLowerCase();
+    const currentUserId = currentUser.id;
+
+    const currentRegDigits = (currentUser.registrationNumber || '').replace(/\D/g, '');
+    const formRegDigits = regNumber.replace(/\D/g, '');
+    const currentCpfDigits = (currentUser.cpf || '').replace(/\D/g, '');
+    const formCpfDigits = cpf.replace(/\D/g, '');
+
+    const nameTokens = currentCleanName.split(' ').filter(t => t.length > 2);
+    const formNameTokens = formCleanName.split(' ').filter(t => t.length > 2);
+
+    return attendance.filter((rec) => {
+      // 1. Newly issued in this session
+      if (sessionIssuedIds.has(rec.id) || (activeCheckinRecord && activeCheckinRecord.id === rec.id)) {
+        return true;
+      }
+
+      // 2. Direct ID or Email match
+      if (rec.userId && currentUserId && rec.userId === currentUserId) {
+        return true;
+      }
+      if (rec.userEmail && currentEmail && rec.userEmail.toLowerCase() === currentEmail) {
+        return true;
+      }
+
+      // 3. CPF match
+      const recCpfDigits = (rec.cpf || '').replace(/\D/g, '');
+      if (recCpfDigits && recCpfDigits.length >= 6) {
+        if (currentCpfDigits && (recCpfDigits === currentCpfDigits || recCpfDigits.includes(currentCpfDigits) || currentCpfDigits.includes(recCpfDigits))) {
+          return true;
+        }
+        if (formCpfDigits && (recCpfDigits === formCpfDigits || recCpfDigits.includes(formCpfDigits) || formCpfDigits.includes(recCpfDigits))) {
+          return true;
+        }
+      }
+
+      // 4. Registration number (Matrícula / COREN / CNS) match
+      const recRegDigits = (rec.registrationNumber || '').replace(/\D/g, '');
+      if (recRegDigits && recRegDigits.length >= 3) {
+        if (currentRegDigits && (recRegDigits === currentRegDigits || recRegDigits.endsWith(currentRegDigits) || currentRegDigits.endsWith(recRegDigits))) {
+          return true;
+        }
+        if (formRegDigits && (recRegDigits === formRegDigits || recRegDigits.endsWith(formRegDigits) || formRegDigits.endsWith(recRegDigits))) {
+          return true;
+        }
+      }
+
+      // 5. Name match (Exact, Substring, or 2+ token overlap)
+      const recCleanName = sanitize(rec.participantName || '');
+      if (recCleanName) {
+        if (currentCleanName && (
+          recCleanName === currentCleanName ||
+          recCleanName.includes(currentCleanName) ||
+          currentCleanName.includes(recCleanName)
+        )) {
+          return true;
+        }
+        if (formCleanName && formCleanName.length > 4 && (
+          recCleanName === formCleanName ||
+          recCleanName.includes(formCleanName) ||
+          formCleanName.includes(recCleanName)
+        )) {
+          return true;
+        }
+
+        // Token overlap
+        const recTokens = recCleanName.split(' ').filter(t => t.length > 2);
+        if (nameTokens.length > 0) {
+          const commonTokens = nameTokens.filter(t => recTokens.includes(t));
+          if (commonTokens.length >= 2 || (nameTokens.length === 1 && commonTokens.length === 1)) {
+            return true;
+          }
+        }
+        if (formNameTokens.length > 0) {
+          const commonFormTokens = formNameTokens.filter(t => recTokens.includes(t));
+          if (commonFormTokens.length >= 2) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    });
+  }, [attendance, currentUser, participantName, cpf, regNumber, sessionIssuedIds, activeCheckinRecord]);
+
+  // Filtered Passport records (by search keyword within user's own certificates)
   const myPassportRecords = useMemo(() => {
-    if (!passportSearch.trim()) return attendance;
-    const term = passportSearch.toLowerCase();
-    return attendance.filter(r => 
-      r.participantName.toLowerCase().includes(term) ||
-      r.cpf.includes(term) ||
-      r.registrationNumber.toLowerCase().includes(term) ||
-      r.actionTitle.toLowerCase().includes(term)
+    if (!passportSearch.trim()) return userFilteredAttendance;
+    const term = passportSearch.toLowerCase().trim();
+    return userFilteredAttendance.filter(r => 
+      r.actionTitle.toLowerCase().includes(term) ||
+      r.thematicAxis.toLowerCase().includes(term) ||
+      r.certificateCode.toLowerCase().includes(term) ||
+      r.actionCode.toLowerCase().includes(term) ||
+      r.unitName.toLowerCase().includes(term) ||
+      r.date.includes(term)
     );
-  }, [attendance, passportSearch]);
+  }, [userFilteredAttendance, passportSearch]);
 
   const totalAccumulatedHours = useMemo(() => {
-    return myPassportRecords.reduce((acc, r) => acc + r.workloadHours, 0);
-  }, [myPassportRecords]);
+    return userFilteredAttendance.reduce((acc, r) => acc + r.workloadHours, 0);
+  }, [userFilteredAttendance]);
 
   return (
     <div className="space-y-6">
@@ -267,51 +498,113 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
           <form onSubmit={handleCheckinSubmit} className="p-4 space-y-4 text-xs">
             
             {/* PIN INPUT HERO */}
-            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-              <label className="block text-slate-700 font-bold text-xs uppercase tracking-wide">
-                Código PIN da Ação (4 dígitos exibidos pelo instrutor)
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  maxLength={4}
-                  required
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="Ex: 8492"
-                  className="w-32 bg-white border border-slate-300 text-slate-900 font-mono font-black text-xl tracking-widest text-center rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-                <span className="text-slate-500 text-[11px]">
-                  Ou selecione a capacitação ativa abaixo caso não tenha o PIN em mãos.
+            <div className={`p-4 rounded-xl border transition-all ${
+              pinMatchedAction
+                ? 'bg-emerald-50/60 border-emerald-300 ring-2 ring-emerald-100'
+                : pin.trim().length === 4
+                ? 'bg-rose-50/60 border-rose-300 ring-2 ring-rose-100'
+                : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-slate-800 font-bold text-xs uppercase tracking-wide">
+                  Código PIN Oficial da Ação <span className="text-red-500">*</span>
+                </label>
+                <span className="text-[10px] text-slate-500 font-medium">
+                  Gerado pela Coordenação NEPS
                 </span>
               </div>
-            </div>
 
-            {/* Select action alternative */}
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                Ou selecione a Capacitação na lista da rede
-              </label>
-              <select
-                value={selectedActionId}
-                onChange={(e) => setSelectedActionId(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              >
-                <option value="">-- Selecione uma ação educativa --</option>
-                {activeTrainings.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    [{a.code}] {a.title} ({a.unitName} - {a.workloadHours}h)
-                  </option>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="relative">
+                  <input
+                    type="text"
+                    maxLength={4}
+                    required
+                    value={pin}
+                    onChange={(e) => {
+                      const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setPin(digitsOnly);
+                      if (digitsOnly.length === 4) {
+                        const match = actions.find(a => a.checkinPin.trim() === digitsOnly && a.status !== 'cancelada');
+                        if (match) {
+                          setSelectedActionId(match.id);
+                        }
+                      }
+                    }}
+                    placeholder="0000"
+                    className="w-36 bg-white border border-slate-300 text-slate-900 font-mono font-black text-2xl tracking-widest text-center rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-2xs"
+                  />
+                </div>
+
+                <div className="flex-1 text-xs">
+                  {pinMatchedAction ? (
+                    <div className="flex items-center gap-1.5 text-emerald-800 font-bold bg-emerald-100/70 border border-emerald-300 px-3 py-2 rounded-lg animate-in fade-in">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div className="truncate">
+                        <span className="block text-[11px] font-mono uppercase text-emerald-900">
+                          ✓ PIN Válido NEPS: [{pinMatchedAction.code}]
+                        </span>
+                        <span className="text-[11px] font-normal truncate block text-emerald-950">
+                          {pinMatchedAction.title} ({pinMatchedAction.workloadHours}h)
+                        </span>
+                      </div>
+                    </div>
+                  ) : pin.trim().length === 4 ? (
+                    <div className="flex items-center gap-1.5 text-rose-800 font-medium bg-rose-100/70 border border-rose-300 px-3 py-2 rounded-lg animate-in fade-in">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span className="text-[11px]">
+                        PIN não localizado no NEPS. Verifique com a coordenação.
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Digite os <strong>4 dígitos numéricos</strong> exibidos no slide ou informados pelo facilitador/NEPS.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick helper for active unit actions */}
+              <div className="mt-3 pt-2.5 border-t border-slate-200/80 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-600">
+                <span className="text-slate-400 font-medium text-[10px]">Ações com PIN ativo da rede:</span>
+                {actions.filter(a => a.status === 'em_andamento' || a.status === 'planejada' || a.status === 'concluida').slice(0, 4).map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => {
+                      setPin(a.checkinPin);
+                      setSelectedActionId(a.id);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition border cursor-pointer ${
+                      pin === a.checkinPin
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-700'
+                    }`}
+                    title={`${a.title} - ${a.unitName}`}
+                  >
+                    PIN {a.checkinPin} ({a.code})
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
             {/* Participant Details */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  CPF <span className="text-red-500">*</span> (com validação CNES)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-700 font-semibold text-xs">
+                    CPF <span className="text-red-500">*</span> (Validação CNES)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handlePerformCnesLookup()}
+                    disabled={isSearchingCnes || !cpf}
+                    className="text-[11px] text-blue-600 font-bold hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                  >
+                    <Search className={`w-3 h-3 ${isSearchingCnes ? 'animate-spin' : ''}`} />
+                    <span>{isSearchingCnes ? 'Buscando...' : 'Buscar no CNES'}</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type="text"
@@ -319,22 +612,29 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                     value={cpf}
                     onChange={(e) => {
                       const val = e.target.value;
-                      setCpf(val);
-                      // Auto-lookup in CNES database
-                      const cleanVal = val.replace(/\D/g, '');
-                      const match = cnesProfessionals.find(p => p.cpf.replace(/\D/g, '') === cleanVal || p.cpf === val);
+                      const formatted = formatCpf(val);
+                      setCpf(formatted);
+                      
+                      const cleanVal = formatted.replace(/\D/g, '');
+                      // Immediate local lookup
+                      const match = cnesProfessionals.find(p => p.cpf.replace(/\D/g, '') === cleanVal || p.cpf === formatted);
                       if (match) {
                         setCnesMatch(match);
                         setParticipantName(match.name);
                         setCategory(match.professionalCategory);
                         setRegNumber(match.councilRegistration || `CNS-${match.cns.slice(-6)}`);
                         setParticipantUnitId(match.unitId);
+                        setCnesLookupFeedback(null);
+                      } else if (cleanVal.length === 11) {
+                        // Auto-lookup online if 11 digits complete
+                        handlePerformCnesLookup(cleanVal);
                       } else {
                         setCnesMatch(null);
+                        setCnesLookupFeedback(null);
                       }
                     }}
                     placeholder="000.000.000-00"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-mono"
                   />
                   {cnesMatch && (
                     <span className="absolute right-2 top-2 text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-1 border border-emerald-300">
@@ -342,10 +642,16 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                     </span>
                   )}
                 </div>
+                {cnesLookupFeedback && !cnesMatch && (
+                  <p className="text-[10px] text-amber-700 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <span>{cnesLookupFeedback}</span>
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
+                <label className="block text-slate-700 font-semibold mb-1 text-xs">
                   Seu Nome Completo <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -354,31 +660,31 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                   value={participantName}
                   onChange={(e) => setParticipantName(e.target.value)}
                   placeholder="Ex: Dra. Mariana Vasconcelos"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  Matrícula SUS / Registro de Classe
+                <label className="block text-slate-700 font-semibold mb-1 text-xs">
+                  Matrícula SUS / Registro de Classe (CRM, COREN, CRO, etc.)
                 </label>
                 <input
                   type="text"
                   value={regNumber}
                   onChange={(e) => setRegNumber(e.target.value)}
                   placeholder="Ex: COREN-PE 123456"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
+                <label className="block text-slate-700 font-semibold mb-1 text-xs">
                   Sua Categoria Profissional <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as ProfessionalCategory)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 >
                   {ALL_PROFESSIONAL_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -387,20 +693,20 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
               </div>
 
               {cnesMatch && (
-                <div className="sm:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-2.5 flex items-center justify-between text-[11px] text-blue-900">
+                <div className="sm:col-span-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 flex items-center justify-between text-[11px] text-emerald-900 animate-in fade-in">
                   <div className="flex items-center gap-2">
-                    <Building className="w-4 h-4 text-blue-600" />
+                    <Building className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>
-                      Vínculo CNES detectado: <strong>{cnesMatch.cboDescription}</strong> ({cnesMatch.weeklyHours}h) • {cnesMatch.unitName}
+                      Vínculo CNES Confirmado: <strong>{cnesMatch.cboDescription}</strong> ({cnesMatch.weeklyHours}h) • {cnesMatch.unitName}
                     </span>
                   </div>
                   {onOpenCnesModal && (
                     <button
                       type="button"
                       onClick={onOpenCnesModal}
-                      className="text-blue-700 font-bold hover:underline"
+                      className="text-emerald-700 font-bold hover:underline shrink-0"
                     >
-                      Ver detalhes CNES
+                      Ver no CNES
                     </button>
                   )}
                 </div>
@@ -533,17 +839,27 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                       </button>
                     </form>
                   ) : (
-                    <div className="bg-blue-50 border border-blue-200 p-3.5 rounded-xl text-center space-y-2.5">
-                      <p className="text-xs text-blue-950 font-medium">
-                        Obrigado! Sua avaliação foi registrada na matriz pedagógica da SERMAC.
+                    <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-center space-y-3">
+                      <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-bold text-xs">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Certificado emitido e registrado no seu histórico!</span>
+                      </div>
+                      <p className="text-xs text-emerald-950 font-medium leading-relaxed">
+                        Sua participação foi computada e o certificado funcional já está disponível no seu <strong>Passaporte de Educação Permanente</strong> abaixo.
                       </p>
-                      <button
-                        onClick={() => onOpenCertificate(activeCheckinRecord)}
-                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-xs transition flex items-center justify-center gap-1.5"
-                      >
-                        <Award className="w-3.5 h-3.5" />
-                        <span>Emitir Certificado Funcional</span>
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                        <button
+                          onClick={() => {
+                            if (activeCheckinRecord) {
+                              onOpenCertificate(activeCheckinRecord);
+                            }
+                          }}
+                          className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          <span>Visualizar Certificado Oficial</span>
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -566,86 +882,136 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
 
       </div>
 
-      {/* PASSPORT OF PERMANENT EDUCATION (CARTEIRA DO PROFISSIONAL) */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col">
+      {/* PASSPORT OF PERMANENT EDUCATION (CARTEIRA INDIVIDUAL DO PROFISSIONAL) */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col overflow-hidden">
         
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-b border-slate-100 bg-linear-to-r from-slate-50 via-white to-blue-50/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-blue-600" />
-              <h3 className="font-bold text-sm text-slate-800">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                <Award className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-base text-slate-800 tracking-tight">
                 Meu Passaporte de Educação Permanente
               </h3>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Titular Autenticado</span>
+              </span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Histórico de certificações e horas acumuladas para pontuação funcional no SUS
+
+            <p className="text-xs text-slate-600 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span>Profissional: <strong className="text-slate-900">{currentUser?.name || 'Profissional SUS'}</strong></span>
+              <span className="text-slate-300">•</span>
+              <span>Matrícula/CNS: <strong className="font-mono text-slate-800">{currentUser?.registrationNumber || 'SUS-PE'}</strong></span>
+              {currentUser?.unitName && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-slate-500 truncate max-w-xs">{currentUser.unitName}</span>
+                </>
+              )}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="bg-slate-100 border border-slate-200 px-3 py-1 rounded-md text-xs font-mono font-bold text-slate-800">
-              Total: <strong>{totalAccumulatedHours}h</strong>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-xs shadow-2xs flex items-center gap-2">
+              <span className="text-slate-500 font-medium">Total Acreditado:</span>
+              <strong className="text-blue-700 font-mono font-bold text-sm">{totalAccumulatedHours}h</strong>
             </div>
 
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
                 value={passportSearch}
                 onChange={(e) => setPassportSearch(e.target.value)}
-                placeholder="Filtrar por CPF ou Nome..."
-                className="bg-slate-50 border border-slate-200 rounded-md pl-8 pr-3 py-1 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none w-48 sm:w-56"
+                placeholder="Buscar em meus certificados..."
+                className="bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none w-48 sm:w-60 shadow-2xs"
               />
             </div>
           </div>
         </div>
 
         {myPassportRecords.length === 0 ? (
-          <div className="text-center py-8 text-slate-400 text-xs">
-            Nenhum certificado registrado com o filtro informado.
+          <div className="text-center py-12 px-4 space-y-3">
+            <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+              <BookOpen className="w-6 h-6" />
+            </div>
+            <div className="max-w-md mx-auto space-y-1">
+              <h4 className="font-bold text-sm text-slate-700">
+                {passportSearch.trim()
+                  ? `Nenhum certificado encontrado para "${passportSearch}"`
+                  : `Nenhum certificado registrado no passaporte de ${currentUser?.name || 'seu perfil'} ainda`}
+              </h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {passportSearch.trim()
+                  ? 'Verifique os termos digitados ou limpe o campo de busca para exibir todos os seus certificados.'
+                  : 'Participe de uma das capacitações ativas da rede SUS e realize o auto-check-in acima com o PIN informado pelo facilitador para liberar sua declaração autenticada.'}
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {myPassportRecords.map((rec) => (
-              <div 
-                key={rec.id}
-                className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl shadow-2xs hover:border-blue-300 transition space-y-2.5 flex flex-col justify-between"
-              >
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="bg-slate-200 text-slate-800 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded">
-                      {rec.actionCode}
+          <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myPassportRecords.map((rec) => {
+              const isNewlyIssued = activeCheckinRecord?.id === rec.id;
+              return (
+                <div 
+                  key={rec.id}
+                  className={`bg-white border p-4 rounded-xl shadow-2xs hover:shadow-sm transition flex flex-col justify-between group ${
+                    isNewlyIssued
+                      ? 'border-emerald-400 ring-2 ring-emerald-100 bg-emerald-50/20'
+                      : 'border-slate-200/90 hover:border-blue-300'
+                  }`}
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="bg-blue-50 text-blue-800 border border-blue-100 text-[10px] font-mono font-bold px-2 py-0.5 rounded">
+                          {rec.actionCode}
+                        </span>
+                        {isNewlyIssued && (
+                          <span className="inline-flex items-center gap-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                            <CheckCircle2 className="w-2.5 h-2.5" />
+                            Recém-emitido
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-slate-400 text-[10px] font-mono flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {rec.date}
+                      </span>
+                    </div>
+
+                    <h4 className="font-bold text-xs text-slate-900 leading-snug group-hover:text-blue-900 transition-colors">
+                      {rec.actionTitle}
+                    </h4>
+
+                    <div className="text-[11px] text-slate-600 space-y-1 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                      <p className="truncate"><strong>Eixo:</strong> {rec.thematicAxis}</p>
+                      <p className="truncate"><strong>Unidade:</strong> {rec.unitName}</p>
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                        <span>Carga Horária:</span>
+                        <strong className="text-blue-700 font-mono font-bold">{rec.workloadHours} horas</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <span className="text-[9px] text-slate-400 font-mono truncate max-w-[120px]" title={rec.certificateCode}>
+                      {rec.certificateCode}
                     </span>
-                    <span className="text-slate-400 text-[10px] font-mono">{rec.date}</span>
-                  </div>
 
-                  <h4 className="font-bold text-xs text-slate-900 leading-snug">
-                    {rec.actionTitle}
-                  </h4>
-
-                  <div className="text-[11px] text-slate-600 space-y-0.5">
-                    <p><strong>Profissional:</strong> {rec.participantName}</p>
-                    <p><strong>Categoria:</strong> {rec.professionalCategory}</p>
-                    <p><strong>Unidade:</strong> {rec.unitName}</p>
-                    <p><strong>Carga Horária:</strong> <strong className="text-blue-700 font-mono">{rec.workloadHours}h</strong></p>
+                    <button
+                      onClick={() => onOpenCertificate(rec)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#1351B4] hover:bg-[#0C326F] px-3 py-1.5 rounded-lg shadow-2xs transition active:scale-95 cursor-pointer"
+                    >
+                      <Award className="w-3.5 h-3.5" />
+                      <span>Visualizar Certificado</span>
+                    </button>
                   </div>
                 </div>
-
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-                  <span className="text-[9px] text-slate-400 font-mono">
-                    {rec.certificateCode}
-                  </span>
-
-                  <button
-                    onClick={() => onOpenCertificate(rec)}
-                    className="flex items-center space-x-1 text-xs font-semibold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition"
-                  >
-                    <Award className="w-3 h-3" />
-                    <span>Certificado</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

@@ -23,6 +23,7 @@ import {
   saveStoredCensus,
   loadStoredUser,
   saveStoredUser,
+  INITIAL_HEALTH_UNITS,
   DEFAULT_SERMAC_USER,
   DEFAULT_NEPS_USERS,
   DEFAULT_PARTICIPANT_USER
@@ -61,15 +62,22 @@ export default function App() {
   
   // CNES Database State
   const [cnesProfessionals, setCnesProfessionals] = useState<CnesProfessional[]>(() => {
-    const stored = localStorage.getItem('eps_cnes_professionals');
+    const stored = localStorage.getItem('eps_cnes_professionals_v4');
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length >= 5000) {
+          return parsed;
+        }
       } catch (e) {
         // fallback
       }
     }
-    return generateMockCnesDatabase(getStoredHealthUnits());
+    const generated = generateMockCnesDatabase(INITIAL_HEALTH_UNITS);
+    try {
+      localStorage.setItem('eps_cnes_professionals_v4', JSON.stringify(generated));
+    } catch (e) {}
+    return generated;
   });
 
   // Modal States
@@ -87,7 +95,7 @@ export default function App() {
   // Sync to LocalStorage on changes
   useEffect(() => {
     try {
-      localStorage.setItem('eps_cnes_professionals', JSON.stringify(cnesProfessionals));
+      localStorage.setItem('eps_cnes_professionals_v4', JSON.stringify(cnesProfessionals));
     } catch (e) {
       // quota or private mode
     }
@@ -315,16 +323,32 @@ export default function App() {
     }
   };
 
-  const handleAddAttendance = (recordData: Omit<AttendanceRecord, 'id' | 'certificateCode'>) => {
-    const certCode = `CERT-${recordData.actionCode}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const handleUpdateCurrentUser = (updatedUser: AuthUser) => {
+    setCurrentUser(updatedUser);
+    saveStoredUser(updatedUser);
+  };
+
+  const handleAddAttendance = (recordData: AttendanceRecord | Omit<AttendanceRecord, 'id' | 'certificateCode'>) => {
+    const certCode = ('certificateCode' in recordData && recordData.certificateCode)
+      ? recordData.certificateCode
+      : `CERT-${recordData.actionCode}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const id = ('id' in recordData && recordData.id)
+      ? recordData.id
+      : `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
     const newRecord: AttendanceRecord = {
       ...recordData,
-      id: `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id,
       certificateCode: certCode
     };
 
-    const updated = [newRecord, ...attendance];
-    setAttendance(updated);
+    setAttendance(prev => {
+      const exists = prev.some(a => a.id === newRecord.id);
+      if (exists) {
+        return prev.map(a => a.id === newRecord.id ? newRecord : a);
+      }
+      return [newRecord, ...prev];
+    });
 
     // Increment attended count on action
     setActions(prev => prev.map(a => {
@@ -470,6 +494,7 @@ export default function App() {
 
           {currentRole === 'PARTICIPANT' && (
             <ParticipantPortal
+              currentUser={currentUser}
               actions={actions}
               attendance={attendance}
               units={units}
@@ -481,6 +506,8 @@ export default function App() {
                 setCnesTargetUnitId(undefined);
                 setIsCnesModalOpen(true);
               }}
+              onAddCnesProfessional={handleAddCnesProfessional}
+              onUpdateCurrentUser={handleUpdateCurrentUser}
             />
           )}
 
@@ -488,12 +515,9 @@ export default function App() {
 
         {/* Footer */}
         <footer className="bg-white border-t border-slate-200 py-3.5 px-6 text-center text-xs text-slate-500 print:hidden mt-auto">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="max-w-7xl mx-auto flex items-center justify-center">
             <span className="text-slate-600 font-medium">
               <strong className="text-slate-800">EPS-SUS SERMAC</strong> • Sistema Municipal de Educação Permanente em Saúde e Qualificação do Cuidado
-            </span>
-            <span className="text-[11px] text-slate-400">
-              Conforme Diretrizes da Política Nacional de Educação Permanente em Saúde (PNEPS/SUS)
             </span>
           </div>
         </footer>
@@ -576,9 +600,11 @@ export default function App() {
 
       {isCnesModalOpen && (
         <CnesIntegrationModal
-          units={units}
-          selectedUnitId={cnesTargetUnitId}
+          units={currentRole === 'NEPS_UNIT' && currentUser?.unitId ? units.filter(u => u.id === currentUser.unitId) : units}
+          selectedUnitId={currentRole === 'NEPS_UNIT' && currentUser?.unitId ? currentUser.unitId : (cnesTargetUnitId || selectedUnitId)}
           professionals={cnesProfessionals}
+          isRestrictedToUnit={currentRole === 'NEPS_UNIT'}
+          currentUserRole={currentRole}
           onClose={() => {
             setIsCnesModalOpen(false);
             setCnesTargetUnitId(undefined);

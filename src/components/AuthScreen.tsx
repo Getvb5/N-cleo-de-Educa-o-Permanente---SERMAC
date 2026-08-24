@@ -27,28 +27,6 @@ import {
   DEFAULT_PARTICIPANT_USER 
 } from '../data/mockData';
 
-// Official Google Multi-color Icon
-const GoogleIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
-  <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      fill="#4285F4"
-      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-    />
-    <path
-      fill="#34A853"
-      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-    />
-    <path
-      fill="#FBBC05"
-      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-    />
-    <path
-      fill="#EA4335"
-      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-    />
-  </svg>
-);
-
 interface AuthScreenProps {
   units: HealthUnit[];
   onLoginSuccess: (user: AuthUser, selectedUnitId?: string) => void;
@@ -59,21 +37,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   const [selectedUnitId, setSelectedUnitId] = useState<string>(units[0]?.id || 'unit-159');
   const [participantUnitId, setParticipantUnitId] = useState<string>(units[0]?.id || 'unit-159');
   
-  // Google Account inputs per profile
+  // Institutional Account inputs per profile
   // 1. Central SERMAC (strict controlled access)
-  const [sermacGoogleEmail, setSermacGoogleEmail] = useState<string>('');
-  const [sermacGoogleName, setSermacGoogleName] = useState<string>('');
+  const [sermacEmail, setSermacEmail] = useState<string>('');
+  const [sermacName, setSermacName] = useState<string>('');
   const [sermacPasscode, setSermacPasscode] = useState<string>('');
   const [showPasscode, setShowPasscode] = useState<boolean>(false);
   const [passcodeError, setPasscodeError] = useState<string | null>(null);
   
   // 2. NEPS Unit
-  const [nepsGoogleEmail, setNepsGoogleEmail] = useState<string>('');
-  const [nepsGoogleName, setNepsGoogleName] = useState<string>('');
+  const [nepsEmail, setNepsEmail] = useState<string>('');
+  const [nepsName, setNepsName] = useState<string>('');
 
   // 3. Participant
-  const [partGoogleEmail, setPartGoogleEmail] = useState<string>('');
-  const [partGoogleName, setPartGoogleName] = useState<string>('');
+  const [partEmail, setPartEmail] = useState<string>('');
+  const [partName, setPartName] = useState<string>('');
 
   // Error & Security Alert State
   const [authError, setAuthError] = useState<{
@@ -84,7 +62,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   } | null>(null);
 
   /**
-   * Complete Login with Google Profile & Institutional Security Key
+   * Complete Login with Institutional Profile & Security Key
    */
   const handleLogin = (role: UserRole, targetUnitId?: string) => {
     setAuthError(null);
@@ -94,11 +72,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
     // 1. GESTÃO CENTRAL (SERMAC) — STRICT CONTROLLED ACCESS (EMAIL + CHAVE SEGURANÇA)
     // =========================================================================
     if (role === 'SERMAC_CENTRAL') {
-      const cleanEmail = sermacGoogleEmail.toLowerCase().trim();
+      const cleanEmail = sermacEmail.toLowerCase().trim();
       
       if (!cleanEmail) {
         setAuthError({
-          message: 'Por favor, informe seu e-mail Google para acessar a Gestão Central.',
+          message: 'Por favor, informe seu e-mail institucional para acessar a Gestão Central.',
         });
         return;
       }
@@ -107,7 +85,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       if (!isCentralSermacEmailAuthorized(cleanEmail)) {
         setAuthError({
           email: cleanEmail,
-          message: `A conta Google "${cleanEmail}" NÃO possui autorização para o perfil de Gestão Central (SERMAC).\n\nO acesso à Coordenação Geral é estritamente restrito aos e-mails homologados pela Secretaria de Saúde (SMS Recife).`,
+          message: `O e-mail informado "${cleanEmail}" NÃO possui autorização para o perfil de Gestão Central (SERMAC).\n\nO acesso à Coordenação Geral é estritamente restrito aos e-mails homologados pela Secretaria de Saúde (SMS Recife).`,
           isAccessDenied: true
         });
         return;
@@ -117,7 +95,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       if (!isCentralSermacPasscodeValid(sermacPasscode)) {
         const errorMsg = !sermacPasscode.trim() 
           ? 'Por favor, insira a Chave de Acesso Institucional (PIN / Senha de Segurança) da Gestão Central.'
-          : 'Chave de Acesso Institucional inválida. Verifique o código fornecido pela Gerência Central (SERMAC / GGAI).';
+          : 'Chave de Acesso Institucional inválida. Verifique o código fornecido pela Secretaria de Média e Alta Complexidade (SERMAC).';
         
         setPasscodeError(errorMsg);
         setAuthError({
@@ -132,17 +110,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       const centralUser: AuthUser = matched ? {
         ...matched,
         email: cleanEmail,
-        name: sermacGoogleName.trim() || matched.name,
-        authProvider: 'google'
+        name: sermacName.trim() || matched.name,
+        authProvider: 'institutional'
       } : {
         id: `usr-sermac-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
-        name: sermacGoogleName.trim() || 'Gestor(a) Central SERMAC',
+        name: sermacName.trim() || 'Gestor(a) Central SERMAC',
         email: cleanEmail,
         role: 'SERMAC_CENTRAL',
         registrationNumber: 'SMS-REC-2026',
         jobTitle: 'Gestão Central de Educação Permanente • SERMAC',
-        avatarInitials: (sermacGoogleName || cleanEmail).substring(0, 2).toUpperCase(),
-        authProvider: 'google'
+        avatarInitials: (sermacName || cleanEmail).substring(0, 2).toUpperCase(),
+        authProvider: 'institutional'
       };
 
       onLoginSuccess(centralUser);
@@ -150,20 +128,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
     }
 
     // =========================================================================
-    // 2. NÚCLEO NEPS - UNIDADE — OPEN ACCESS WITH ANY GOOGLE ACCOUNT
+    // 2. NÚCLEO NEPS - UNIDADE — OPEN ACCESS WITH INSTITUTIONAL PROFILE
     // =========================================================================
     if (role === 'NEPS_UNIT') {
-      const cleanEmail = nepsGoogleEmail.trim().toLowerCase();
+      const cleanEmail = nepsEmail.trim().toLowerCase();
       if (!cleanEmail) {
         setAuthError({
-          message: 'Por favor, digite seu e-mail Google para acessar a Coordenação NEPS.',
+          message: 'Por favor, digite seu e-mail funcional para acessar a Coordenação NEPS.',
         });
         return;
       }
 
       const currentUnit = units.find(u => u.id === (targetUnitId || selectedUnitId)) || units[0];
       const matched = DEFAULT_NEPS_USERS.find(u => u.unitId === currentUnit.id);
-      const displayName = nepsGoogleName.trim() || currentUnit.coordinatorName || 'Coordenação NEPS';
+      const displayName = nepsName.trim() || currentUnit.coordinatorName || 'Coordenação NEPS';
 
       const nepsUser: AuthUser = {
         id: matched?.id || `usr-neps-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
@@ -175,7 +153,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         unitName: currentUnit.name,
         jobTitle: `Coordenação NEPS • ${currentUnit.name}`,
         avatarInitials: displayName.substring(0, 2).toUpperCase(),
-        authProvider: 'google'
+        authProvider: 'institutional'
       };
 
       onLoginSuccess(nepsUser, currentUnit.id);
@@ -183,18 +161,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
     }
 
     // =========================================================================
-    // 3. PORTAL DO PARTICIPANTE — OPEN ACCESS WITH ANY GOOGLE ACCOUNT
+    // 3. PORTAL DO PARTICIPANTE — ACCESS FOR SUS PROFESSIONALS
     // =========================================================================
-    const cleanEmail = partGoogleEmail.trim().toLowerCase();
+    const cleanEmail = partEmail.trim().toLowerCase();
     if (!cleanEmail) {
       setAuthError({
-        message: 'Por favor, digite seu e-mail Google para acessar o Portal do Participante.',
+        message: 'Por favor, digite seu e-mail para acessar o Portal do Participante.',
       });
       return;
     }
 
     const currentUnit = units.find(u => u.id === (targetUnitId || participantUnitId)) || units[0];
-    const displayName = partGoogleName.trim() || 'Profissional de Saúde SUS';
+    const displayName = partName.trim() || 'Profissional de Saúde SUS';
     
     const partUser: AuthUser = {
       ...DEFAULT_PARTICIPANT_USER,
@@ -204,7 +182,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       unitId: currentUnit.id,
       unitName: currentUnit.name,
       avatarInitials: displayName.substring(0, 2).toUpperCase(),
-      authProvider: 'google'
+      authProvider: 'institutional'
     };
 
     onLoginSuccess(partUser, currentUnit.id);
@@ -245,8 +223,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
           <div className="flex items-center gap-2 text-xs">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20">
-              <GoogleIcon className="w-4 h-4" />
-              <span>Autenticação Google / Gmail</span>
+              <ShieldCheck className="w-4 h-4 text-blue-200" />
+              <span>Acesso Institucional Seguro</span>
             </span>
           </div>
 
@@ -259,14 +237,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         {/* Title & Guidance Banner */}
         <div className="text-center max-w-3xl mx-auto mb-6 space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#EBF2FC] border border-[#1351B4]/30 text-[#0C326F] text-xs font-bold mb-1">
-            <GoogleIcon className="w-4 h-4" />
-            Acesso com Conta Google / Gmail
+            <Building2 className="w-4 h-4 text-[#1351B4]" />
+            Autenticação Institucional • Rede Municipal de Saúde
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-[#0C326F] tracking-tight">
             Portal de Acesso aos Perfis do Sistema
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-            Selecione seu perfil de atuação abaixo e entre com sua conta Google. 
+            Selecione seu perfil de atuação abaixo para acessar o sistema. 
             <strong className="text-[#0C326F] ml-1">O controle estrito de acesso é aplicado exclusivamente à Gestão Central SERMAC</strong>.
           </p>
         </div>
@@ -284,7 +262,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                   <h4 className="text-sm font-bold text-rose-950">
                     {authError.isPasscodeError 
                       ? 'ACESSO BLOQUEADO — CHAVE DE SEGURANÇA INSTITUCIONAL INCORRETA' 
-                      : 'ACESSO NEGADO — CONTA GOOGLE NÃO HOMOLOGADA NA CENTRAL'}
+                      : 'ACESSO NEGADO — E-MAIL NÃO HOMOLOGADO NA GESTÃO CENTRAL'}
                   </h4>
                   {authError.email && (
                     <span className="px-2.5 py-0.5 bg-rose-200 text-rose-900 font-mono text-[11px] font-bold rounded">
@@ -300,7 +278,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 {!authError.isPasscodeError && (
                   <div className="pt-2 mt-2 border-t border-rose-200 text-xs text-rose-800">
                     <p className="font-semibold">
-                      Caso necessite de autorização de acesso ao módulo da Gestão Central, solicite a homologação da sua conta institucional à Gerência Geral (SERMAC / GGAI).
+                      Caso necessite de autorização de acesso ao módulo da Gestão Central, solicite a homologação do seu e-mail institucional à Secretaria de Média e Alta Complexidade (SERMAC).
                     </p>
                   </div>
                 )}
@@ -341,7 +319,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 Coordenação Geral, matriz intersetorial da rede, diagnóstico preditivo IA, LNT e consolidação dos 8 Distritos Sanitários.
               </p>
 
-              {/* Form: Google Account for Central */}
+              {/* Form: Account for Central */}
               <div className="mt-4 p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-3">
                 <div className="flex items-center justify-between text-[#0C326F] font-bold text-xs">
                   <div className="flex items-center gap-1.5">
@@ -355,18 +333,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
                 <div className="space-y-2">
                   <label className="block text-[11px] font-bold text-slate-700">
-                    Conta Google / E-mail Autorizado:
+                    E-mail Funcional Homologado:
                   </label>
                   <div className="relative">
                     <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
-                      value={sermacGoogleEmail}
+                      value={sermacEmail}
                       onChange={(e) => {
-                        setSermacGoogleEmail(e.target.value);
+                        setSermacEmail(e.target.value);
                         setAuthError(null);
                       }}
-                      placeholder="seu.email@gmail.com ou @recife.pe.gov.br"
+                      placeholder="ex: seu.email@recife.pe.gov.br"
                       className="w-full pl-8 pr-2.5 py-2 bg-white border border-slate-300 rounded text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#1351B4] focus:ring-1 focus:ring-[#1351B4]"
                     />
                   </div>
@@ -416,7 +394,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                     </p>
                   ) : (
                     <p className="text-[10px] text-slate-500 pt-0.5">
-                      Token exclusivo e sigiloso da Gerência Central (SERMAC / GGAI).
+                      Token exclusivo e sigiloso da Secretaria de Média e Alta Complexidade (SERMAC).
                     </p>
                   )}
                 </div>
@@ -438,7 +416,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           </div>
 
           {/* ============================================================ */}
-          {/* PILLAR 2: NÚCLEOS NEPS - UNIDADE (OPEN ACCESS WITH GOOGLE)   */}
+          {/* PILLAR 2: NÚCLEOS NEPS - UNIDADE                             */}
           {/* ============================================================ */}
           <div className="bg-white border-2 border-emerald-600 rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
             
@@ -466,7 +444,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 Gestão direta das capacitações locais, validação de presença via QR Code em tempo real, submissão de DNC e censo.
               </p>
 
-              {/* Form: Unit Selection & Google Account */}
+              {/* Form: Unit Selection & Account */}
               <div className="mt-4 p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
@@ -487,18 +465,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
                 <div className="space-y-1.5 pt-1">
                   <label className="block text-[11px] font-bold text-slate-700">
-                    Sua Conta Google / Gmail:
+                    E-mail Funcional / Institucional:
                   </label>
                   <div className="relative">
                     <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
-                      value={nepsGoogleEmail}
+                      value={nepsEmail}
                       onChange={(e) => {
-                        setNepsGoogleEmail(e.target.value);
+                        setNepsEmail(e.target.value);
                         setAuthError(null);
                       }}
-                      placeholder="digite seu e-mail Google"
+                      placeholder="ex: neps.unidade@saude.recife.pe.gov.br"
                       className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-900 font-semibold focus:outline-none focus:border-emerald-600"
                     />
                   </div>
@@ -512,9 +490,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                     <User className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      value={nepsGoogleName}
+                      value={nepsName}
                       onChange={(e) => {
-                        setNepsGoogleName(e.target.value);
+                        setNepsName(e.target.value);
                         setAuthError(null);
                       }}
                       placeholder="Seu Nome Completo"
@@ -525,7 +503,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
                 <div className="p-2 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-900 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                  <span>Acesso imediato para qualquer conta Google na unidade.</span>
+                  <span>Acesso institucional imediato para a coordenação da unidade.</span>
                 </div>
               </div>
             </div>
@@ -536,7 +514,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 onClick={() => handleLogin('NEPS_UNIT')}
                 className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer hover:shadow"
               >
-                <GoogleIcon className="w-4 h-4" />
+                <Building className="w-4 h-4" />
                 <span>Entrar como NEPS ({currentSelectedUnit.code})</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
@@ -545,7 +523,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           </div>
 
           {/* ============================================================ */}
-          {/* PILLAR 3: PORTAL DO PARTICIPANTE (OPEN ACCESS WITH GOOGLE)   */}
+          {/* PILLAR 3: PORTAL DO PARTICIPANTE                             */}
           {/* ============================================================ */}
           <div className="bg-white border-2 border-purple-600 rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
             
@@ -573,7 +551,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 Registro de frequência por PIN/QR Code, avaliação de reação dos treinamentos e emissão imediata de certificados oficiais.
               </p>
 
-              {/* Form: Participant info & Google Account */}
+              {/* Form: Participant info */}
               <div className="mt-4 p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
@@ -594,18 +572,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
                 <div className="space-y-1.5 pt-1">
                   <label className="block text-[11px] font-bold text-slate-700">
-                    Sua Conta Google / Gmail:
+                    E-mail Funcional / Contato:
                   </label>
                   <div className="relative">
                     <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
-                      value={partGoogleEmail}
+                      value={partEmail}
                       onChange={(e) => {
-                        setPartGoogleEmail(e.target.value);
+                        setPartEmail(e.target.value);
                         setAuthError(null);
                       }}
-                      placeholder="digite seu e-mail Google"
+                      placeholder="ex: seu.email@saude.recife.pe.gov.br"
                       className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-900 font-semibold focus:outline-none focus:border-purple-600"
                     />
                   </div>
@@ -619,9 +597,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                     <User className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      value={partGoogleName}
+                      value={partName}
                       onChange={(e) => {
-                        setPartGoogleName(e.target.value);
+                        setPartName(e.target.value);
                         setAuthError(null);
                       }}
                       placeholder="Seu Nome Completo"
@@ -632,7 +610,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
                 <div className="p-2 bg-purple-50 border border-purple-200 rounded text-[11px] text-purple-900 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-purple-700 shrink-0" />
-                  <span>Acesso imediato para qualquer profissional com conta Google.</span>
+                  <span>Acesso direto para qualquer profissional ou estagiário da rede.</span>
                 </div>
               </div>
             </div>
@@ -643,7 +621,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 onClick={() => handleLogin('PARTICIPANT')}
                 className="w-full py-3 px-4 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer hover:shadow"
               >
-                <GoogleIcon className="w-4 h-4" />
+                <UserCheck className="w-4 h-4" />
                 <span>Entrar como Participante</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
@@ -657,9 +635,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         <div className="max-w-4xl mx-auto w-full mt-8 p-4 bg-white border border-slate-300 rounded-lg flex items-center gap-3 text-xs text-slate-600 shadow-xs">
           <ShieldCheck className="w-6 h-6 text-emerald-700 shrink-0" />
           <div className="space-y-0.5">
-            <strong className="text-slate-900 font-bold block">Controle de Acesso por Papéis (RBAC) com Identidade Google</strong>
+            <strong className="text-slate-900 font-bold block">Controle de Acesso por Papéis (RBAC) e Segurança Institucional</strong>
             <p className="text-[11px] text-slate-600">
-              O sistema valida a identidade Google/Gmail em todos os acessos. O acesso à <strong className="text-[#0C326F]">Gestão Central SERMAC</strong> é estritamente controlado e exclusivo aos e-mails homologados pela SMS Recife. Os perfis de <strong className="text-emerald-700">Coordenação NEPS Unidade</strong> e <strong className="text-purple-700">Portal do Participante</strong> possuem login livre para qualquer conta Google da rede.
+              O acesso ao sistema é organizado por perfis funcionais da rede municipal. O acesso à <strong className="text-[#0C326F]">Gestão Central SERMAC</strong> é estritamente controlado e requer validação de chave de segurança institucional e e-mail homologado pela SMS Recife. Os perfis de <strong className="text-emerald-700">Coordenação NEPS Unidade</strong> e <strong className="text-purple-700">Portal do Participante</strong> possuem acesso direto para os profissionais e unidades de saúde.
             </p>
           </div>
         </div>
@@ -669,7 +647,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       {/* Footer */}
       <footer className="w-full text-center py-4 border-t border-slate-300 bg-white text-[11px] text-slate-600">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Prefeitura da Cidade do Recife • Secretaria de Saúde • Gerência Geral de Atenção e Informação (GGAI)</span>
+          <span>Prefeitura da Cidade do Recife • Secretaria de Saúde • Secretaria de Média e Alta Complexidade</span>
           <span className="text-[#0C326F] font-bold">PNEPS • SUS Recife</span>
         </div>
       </footer>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TrainingAction, AttendanceRecord, ProfessionalCategory, HealthUnit } from '../types';
 import { ALL_PROFESSIONAL_CATEGORIES } from '../data/mockData';
+import { lookupCnesProfessionalApi, formatCpf } from '../utils/cnesService';
 import { 
   X, 
   Calendar, 
@@ -21,7 +22,9 @@ import {
   AlertCircle,
   Pencil,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Search,
+  Building
 } from 'lucide-react';
 
 interface TrainingDetailsModalProps {
@@ -60,6 +63,38 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
   const [cpf, setCpf] = useState('');
   const [regNumber, setRegNumber] = useState('');
   const [category, setCategory] = useState<ProfessionalCategory>('Enfermeiro(a)');
+  const [isSearchingCnes, setIsSearchingCnes] = useState(false);
+  const [cnesLookupFeedback, setCnesLookupFeedback] = useState<string | null>(null);
+
+  const handleLookupCnesInManualForm = async (inputVal?: string) => {
+    const rawVal = inputVal || cpf || name;
+    const cleanDigits = rawVal.replace(/\D/g, '');
+    if (!rawVal.trim()) return;
+
+    setIsSearchingCnes(true);
+    setCnesLookupFeedback(null);
+    try {
+      const res = await lookupCnesProfessionalApi(cleanDigits || rawVal, {
+        unitId: action?.unitId,
+        unitName: action?.unitName,
+        nameHint: name || (!cleanDigits ? rawVal : undefined),
+        categoryHint: category || undefined
+      });
+
+      if (res) {
+        setName(res.name);
+        setCategory(res.professionalCategory);
+        setRegNumber(res.cns ? `CNS-${res.cns.slice(-6)}` : `SUS-${Math.floor(1000 + Math.random() * 9000)}`);
+        setCnesLookupFeedback(`Recuperado do CNES: ${res.name} (${res.cboDescription})`);
+      } else {
+        setCnesLookupFeedback('Profissional não localizado no CNES.');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSearchingCnes(false);
+    }
+  };
 
   if (!action) return null;
 
@@ -423,46 +458,71 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
               {/* Manual Add Form */}
               {showAddForm && (
                 <form onSubmit={handleManualSubmit} className="bg-teal-50/60 border border-teal-200 p-4 rounded-xl space-y-3">
-                  <h4 className="font-bold text-xs text-teal-900">Registrar Presença de Profissional na Chamada</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-xs text-teal-900">Registrar Presença de Profissional na Chamada</h4>
+                    <span className="text-[11px] text-teal-700">Digite o CPF para autocompletar via CNES</span>
+                  </div>
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                     <div>
-                      <label className="block text-slate-600 font-medium mb-1">Nome Completo</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-slate-600 font-medium">CPF *</label>
+                        <button
+                          type="button"
+                          onClick={() => handleLookupCnesInManualForm()}
+                          disabled={isSearchingCnes || !cpf}
+                          className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer disabled:opacity-40"
+                        >
+                          {isSearchingCnes ? 'Buscando...' : 'Buscar CNES'}
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={cpf}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const formatted = formatCpf(val);
+                          setCpf(formatted);
+                          const digits = formatted.replace(/\D/g, '');
+                          if (digits.length === 11) {
+                            handleLookupCnesInManualForm(digits);
+                          }
+                        }}
+                        placeholder="000.000.000-00"
+                        className="w-full bg-white border border-slate-300 rounded-md p-2 focus:ring-2 focus:ring-teal-500 focus:outline-hidden font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 font-medium mb-1">Nome Completo *</label>
                       <input
                         type="text"
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Ex: Dr. Roberto Martins"
-                        className="w-full bg-white border border-slate-300 rounded-md p-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                        className="w-full bg-white border border-slate-300 rounded-md p-2 focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
                       />
                     </div>
+
                     <div>
-                      <label className="block text-slate-600 font-medium mb-1">CPF</label>
-                      <input
-                        type="text"
-                        required
-                        value={cpf}
-                        onChange={(e) => setCpf(e.target.value)}
-                        placeholder="000.000.000-00"
-                        className="w-full bg-white border border-slate-300 rounded-md p-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 font-medium mb-1">Matrícula SUS</label>
+                      <label className="block text-slate-600 font-medium mb-1">Matrícula / Conselho</label>
                       <input
                         type="text"
                         value={regNumber}
                         onChange={(e) => setRegNumber(e.target.value)}
-                        placeholder="Ex: SUS-8841"
-                        className="w-full bg-white border border-slate-300 rounded-md p-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                        placeholder="Ex: CRM-PE 14592"
+                        className="w-full bg-white border border-slate-300 rounded-md p-2 focus:ring-2 focus:ring-teal-500 focus:outline-hidden font-mono"
                       />
                     </div>
+
                     <div>
                       <label className="block text-slate-600 font-medium mb-1">Categoria Profissional</label>
                       <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value as ProfessionalCategory)}
-                        className="w-full bg-white border border-slate-300 rounded-md p-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                        className="w-full bg-white border border-slate-300 rounded-md p-2 focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
                       >
                         {ALL_PROFESSIONAL_CATEGORIES.map((c) => (
                           <option key={c} value={c}>{c}</option>
@@ -470,17 +530,27 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
                       </select>
                     </div>
                   </div>
+
+                  {cnesLookupFeedback && (
+                    <p className="text-[11px] font-semibold text-emerald-800 bg-emerald-100/70 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                      {cnesLookupFeedback}
+                    </p>
+                  )}
+
                   <div className="flex justify-end gap-2 pt-2">
                     <button
                       type="button"
-                      onClick={() => setShowAddForm(false)}
-                      className="px-3 py-1 bg-slate-200 text-slate-700 text-xs rounded-md font-medium"
+                      onClick={() => {
+                        setShowAddForm(false);
+                        setCnesLookupFeedback(null);
+                      }}
+                      className="px-3 py-1 bg-slate-200 text-slate-700 text-xs rounded-md font-medium cursor-pointer"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1 bg-teal-600 text-white text-xs rounded-md font-bold hover:bg-teal-500"
+                      className="px-4 py-1 bg-teal-600 text-white text-xs rounded-md font-bold hover:bg-teal-500 cursor-pointer shadow-xs"
                     >
                       Confirmar Presença
                     </button>
