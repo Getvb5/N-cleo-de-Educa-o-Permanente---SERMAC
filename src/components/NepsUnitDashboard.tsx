@@ -292,6 +292,18 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
             <Users className="w-4 h-4" />
             <span>Frequências ({unitAttendance.length})</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('solicitar_dnc')}
+            className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+              activeTab === 'solicitar_dnc'
+                ? 'bg-[#1351B4] text-white font-bold shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 font-semibold'
+            }`}
+          >
+            <Send className="w-4 h-4" />
+            <span>Submissão de LNT</span>
+          </button>
         </div>
       </div>
 
@@ -535,12 +547,12 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
         </div>
       )}
 
-      {/* TAB 3: REQUEST TRAINING NEED (DNC) */}
+      {/* TAB: REQUEST TRAINING NEED (LNT) */}
       {activeTab === 'solicitar_dnc' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col">
           <div className="p-4 border-b border-slate-100">
-            <h3 className="font-bold text-slate-800 text-sm">Levantamento de Necessidades de Capacitação (DNC)</h3>
-            <p className="text-[11px] text-slate-400">Identificou uma situação-problema na unidade? Submeta para a Coordenação Central SERMAC</p>
+            <h3 className="font-bold text-slate-800 text-sm">Submissão de Levantamento de Necessidades de Treinamento (LNT)</h3>
+            <p className="text-[11px] text-slate-500">Identificou uma situação-problema ou demanda de capacitação na unidade? Submeta o LNT para a Coordenação Central SERMAC</p>
           </div>
 
           <div className="p-4 space-y-4">

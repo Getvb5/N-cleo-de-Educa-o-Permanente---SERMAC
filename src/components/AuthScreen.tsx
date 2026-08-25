@@ -270,8 +270,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
             Portal de Acesso aos Perfis do Sistema
           </h2>
           <p className="text-xs sm:text-sm text-blue-100 leading-relaxed font-medium">
-            Selecione seu perfil de atuação abaixo para acessar o sistema. 
-            <strong className="text-white ml-1 font-bold">O controle estrito de acesso é aplicado exclusivamente à Gestão Central SERMAC</strong>.
+            Selecione seu perfil de atuação abaixo para acessar o sistema.
           </p>
         </div>
 
@@ -467,7 +466,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
               </div>
 
               <p className="text-xs text-slate-600 leading-relaxed">
-                Gestão direta das capacitações locais, validação de presença via QR Code em tempo real, submissão de DNC e censo.
+                Gestão direta das capacitações locais, validação de presença via QR Code em tempo real, submissão de LNT e censo.
               </p>
 
               {/* Form: Unit Selection & Account */}

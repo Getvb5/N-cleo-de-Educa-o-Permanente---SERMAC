@@ -616,7 +616,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
           <span>Catálogo de Ações ({filteredActions.length})</span>
         </button>
 
-        {/* Tab 4: Demandas DNC */}
+        {/* Tab 4: Demandas LNT */}
         <button
           type="button"
           onClick={() => setActiveTab('dnc')}
@@ -627,7 +627,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
           }`}
         >
           <AlertCircle className="w-4 h-4" />
-          <span>Demandas Formativas DNC ({dncList.length})</span>
+          <span>Demandas Formativas LNT ({dncList.length})</span>
           {metrics.pendingDncCount > 0 && (
             <span className="w-2 h-2 rounded-full bg-amber-400"></span>
           )}
@@ -1097,7 +1097,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
           <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-[#0C326F] text-sm">
-                Demandas de Necessidades de Capacitação (DNC / LNT)
+                Demandas de Necessidades de Capacitação (LNT)
               </h3>
               <p className="text-[11px] text-slate-500">
                 Solicitações encaminhadas pelas coordenações de NEPS das unidades de saúde
