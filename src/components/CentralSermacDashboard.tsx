@@ -309,6 +309,78 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
     return matrix;
   }, [filteredActions, filteredAttendance]);
 
+  // Dynamic categories distribution for Panorama
+  const categoryParticipationData = useMemo(() => {
+    const catEligibleMap: Record<string, number> = {
+      'Enfermagem (Técnicos e Auxiliares)': 850,
+      'Médicos (ESF / Plantonistas / Especialistas)': 120,
+      'Agentes Comunitários de Saúde (ACS / ACE)': 320,
+      'Equipe Multiprofissional (Fisio, Psico, Fono, Nutri)': 45,
+      'Administrativo / Recepção / Regulação': 210,
+      'Serviços Gerais / Higiene / Transporte': 160
+    };
+
+    const catTrainedMap: Record<string, Set<string>> = {
+      'Enfermagem (Técnicos e Auxiliares)': new Set(),
+      'Médicos (ESF / Plantonistas / Especialistas)': new Set(),
+      'Agentes Comunitários de Saúde (ACS / ACE)': new Set(),
+      'Equipe Multiprofissional (Fisio, Psico, Fono, Nutri)': new Set(),
+      'Administrativo / Recepção / Regulação': new Set(),
+      'Serviços Gerais / Higiene / Transporte': new Set()
+    };
+
+    filteredAttendance.filter(r => r.status === 'presente').forEach(att => {
+      const cat = att.professionalCategory || '';
+      const key = att.cpf || att.registrationNumber || att.participantName;
+      if (cat.includes('Enferm') || cat.includes('Técnico')) catTrainedMap['Enfermagem (Técnicos e Auxiliares)']?.add(key);
+      else if (cat.includes('Médic')) catTrainedMap['Médicos (ESF / Plantonistas / Especialistas)']?.add(key);
+      else if (cat.includes('Agente')) catTrainedMap['Agentes Comunitários de Saúde (ACS / ACE)']?.add(key);
+      else if (cat.includes('Recepcionista') || cat.includes('Administrativo')) catTrainedMap['Administrativo / Recepção / Regulação']?.add(key);
+      else if (cat.includes('Higienização') || cat.includes('Gerais') || cat.includes('Transporte')) catTrainedMap['Serviços Gerais / Higiene / Transporte']?.add(key);
+      else catTrainedMap['Equipe Multiprofissional (Fisio, Psico, Fono, Nutri)']?.add(key);
+    });
+
+    return Object.entries(catEligibleMap).map(([name, eligible]) => {
+      const trainedCount = catTrainedMap[name]?.size || 0;
+      const coverage = eligible > 0 ? ((trainedCount / eligible) * 100).toFixed(1) : '0.0';
+      return {
+        name,
+        eligible,
+        trained: trainedCount,
+        coverage: `${coverage}%`
+      };
+    });
+  }, [filteredAttendance]);
+
+  const topDemandedThemes = useMemo(() => {
+    if (filteredActions.length === 0) return [];
+    const counts: Record<string, number> = {};
+    filteredActions.forEach(a => {
+      counts[a.title] = (counts[a.title] || 0) + (a.attendedCount || 1);
+    });
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([title, count]) => ({
+        title,
+        percent: total > 0 ? Math.round((count / total) * 100) : 0
+      }));
+  }, [filteredActions]);
+
+  const topInstructor = useMemo(() => {
+    if (filteredActions.length === 0) return null;
+    const instructorCounts: Record<string, { count: number; category: string }> = {};
+    filteredActions.forEach(a => {
+      if (!instructorCounts[a.instructorName]) {
+        instructorCounts[a.instructorName] = { count: 0, category: a.instructorCategory };
+      }
+      instructorCounts[a.instructorName].count += 1;
+    });
+    const sorted = Object.entries(instructorCounts).sort((a, b) => b[1].count - a[1].count);
+    return sorted.length > 0 ? { name: sorted[0][0], ...sorted[0][1] } : null;
+  }, [filteredActions]);
+
   // Unit Rankings
   const unitPerformanceData = useMemo(() => {
     return activeUnits.map(unit => {
@@ -651,42 +723,18 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
                         </tr>
                       </thead>
                       <tbody className="text-xs text-slate-700 divide-y divide-slate-100">
-                        <tr className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-2.5 font-semibold text-slate-900">Enfermagem (Técnicos e Auxiliares)</td>
-                          <td className="py-2.5 text-center font-mono">850</td>
-                          <td className="py-2.5 text-center font-bold text-[#0C326F] font-mono">642</td>
-                          <td className="py-2.5 text-right text-emerald-700 font-bold font-mono">75.5%</td>
-                        </tr>
-                        <tr className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-2.5 font-semibold text-slate-900">Médicos (ESF / Plantonistas / Especialistas)</td>
-                          <td className="py-2.5 text-center font-mono">120</td>
-                          <td className="py-2.5 text-center font-bold text-[#0C326F] font-mono">84</td>
-                          <td className="py-2.5 text-right text-amber-700 font-bold font-mono">70.0%</td>
-                        </tr>
-                        <tr className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-2.5 font-semibold text-slate-900">Agentes Comunitários de Saúde (ACS / ACE)</td>
-                          <td className="py-2.5 text-center font-mono">320</td>
-                          <td className="py-2.5 text-center font-bold text-[#0C326F] font-mono">295</td>
-                          <td className="py-2.5 text-right text-emerald-700 font-bold font-mono">92.1%</td>
-                        </tr>
-                        <tr className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-2.5 font-semibold text-slate-900">Equipe Multiprofissional (Fisio, Psico, Fono, Nutri)</td>
-                          <td className="py-2.5 text-center font-mono">45</td>
-                          <td className="py-2.5 text-center font-bold text-[#0C326F] font-mono">45</td>
-                          <td className="py-2.5 text-right text-emerald-700 font-bold font-mono">100%</td>
-                        </tr>
-                        <tr className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-2.5 font-semibold text-slate-900">Administrativo / Recepção / Regulação</td>
-                          <td className="py-2.5 text-center font-mono">210</td>
-                          <td className="py-2.5 text-center font-bold text-[#0C326F] font-mono">115</td>
-                          <td className="py-2.5 text-right text-amber-700 font-bold font-mono">54.7%</td>
-                        </tr>
-                        <tr className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-2.5 font-semibold text-slate-900">Serviços Gerais / Higiene / Transporte</td>
-                          <td className="py-2.5 text-center font-mono">160</td>
-                          <td className="py-2.5 text-center font-bold text-[#0C326F] font-mono">148</td>
-                          <td className="py-2.5 text-right text-emerald-700 font-bold font-mono">92.5%</td>
-                        </tr>
+                        {categoryParticipationData.map((cat, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-2.5 font-semibold text-slate-900">{cat.name}</td>
+                            <td className="py-2.5 text-center font-mono">{cat.eligible}</td>
+                            <td className="py-2.5 text-center font-bold text-[#0C326F] font-mono">{cat.trained}</td>
+                            <td className="py-2.5 text-right font-bold font-mono">
+                              <span className={cat.trained > 0 ? 'text-emerald-700' : 'text-slate-400'}>
+                                {cat.coverage}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -698,57 +746,48 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
                     <h3 className="font-bold text-[#0C326F] text-sm">Temas de Maior Demanda</h3>
                     <p className="text-[11px] text-slate-500">Distribuição no volume de capacitações</p>
                   </div>
-                  <div className="p-4 space-y-3 flex-1">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-700 font-medium">Suporte Básico de Vida (SBV / DEA)</span>
-                        <span className="font-bold text-slate-900 font-mono">24%</span>
+                  <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                    {topDemandedThemes.length > 0 ? (
+                      <div className="space-y-3">
+                        {topDemandedThemes.map((theme, idx) => {
+                          const colors = ['bg-[#1351B4]', 'bg-indigo-600', 'bg-emerald-600', 'bg-amber-500'];
+                          return (
+                            <div key={idx} className="space-y-1">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-slate-700 font-medium truncate max-w-[200px]" title={theme.title}>
+                                  {theme.title}
+                                </span>
+                                <span className="font-bold text-slate-900 font-mono">{theme.percent}%</span>
+                              </div>
+                              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                <div className={`h-full ${colors[idx % colors.length]} rounded-full`} style={{ width: `${theme.percent}%` }}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#1351B4] w-[24%] rounded-full"></div>
+                    ) : (
+                      <div className="py-8 text-center text-slate-400 text-xs">
+                        Nenhuma ação de treinamento registrada no período
                       </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-700 font-medium">Protocolo de Reconhecimento de Sepse</span>
-                        <span className="font-bold text-slate-900 font-mono">18%</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-600 w-[18%] rounded-full"></div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-700 font-medium">Segurança do Paciente & Metas Internacionais</span>
-                        <span className="font-bold text-slate-900 font-mono">15%</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-600 w-[15%] rounded-full"></div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-700 font-medium">Prontuário Eletrônico & e-SUS APS</span>
-                        <span className="font-bold text-slate-900 font-mono">12%</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-amber-500 w-[12%] rounded-full"></div>
-                      </div>
-                    </div>
+                    )}
 
                     <div className="pt-3 border-t border-slate-200 mt-auto">
-                      <div className="flex items-center justify-between p-2.5 bg-[#EBF2FC] rounded-lg border border-[#1351B4]/20">
-                        <div>
-                          <p className="text-[10px] font-bold text-[#0C326F] uppercase">Docente em Destaque</p>
-                          <p className="text-xs font-bold text-slate-900">Dra. Camila Nogueira (Médica)</p>
+                      {topInstructor ? (
+                        <div className="flex items-center justify-between p-2.5 bg-[#EBF2FC] rounded-lg border border-[#1351B4]/20">
+                          <div>
+                            <p className="text-[10px] font-bold text-[#0C326F] uppercase">Docente em Destaque</p>
+                            <p className="text-xs font-bold text-slate-900">{topInstructor.name} ({topInstructor.category})</p>
+                          </div>
+                          <span className="text-[10px] font-bold bg-[#1351B4] text-white px-2 py-0.5 rounded">
+                            {topInstructor.count} {topInstructor.count === 1 ? 'Ação' : 'Ações'}
+                          </span>
                         </div>
-                        <span className="text-[10px] font-bold bg-[#1351B4] text-white px-2 py-0.5 rounded">
-                          12 Turmas
-                        </span>
-                      </div>
+                      ) : (
+                        <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-center text-xs text-slate-500">
+                          Sem docentes com turmas ativas
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

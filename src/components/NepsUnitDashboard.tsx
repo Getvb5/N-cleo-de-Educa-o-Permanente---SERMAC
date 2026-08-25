@@ -107,8 +107,8 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
 
     const feedbackRecords = unitAttendance.filter(r => r.feedback && r.feedback.satisfactionRating);
     const avgSatisfaction = feedbackRecords.length > 0
-      ? (feedbackRecords.reduce((acc, r) => acc + (r.feedback?.satisfactionRating || 5), 0) / feedbackRecords.length).toFixed(1)
-      : '4.8';
+      ? (feedbackRecords.reduce((acc, r) => acc + (r.feedback?.satisfactionRating || 0), 0) / feedbackRecords.length).toFixed(1)
+      : '0.0';
 
     return {
       totalActions: unitActions.length,
@@ -116,7 +116,8 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
       uniqueTrained,
       coveragePercent,
       totalHours,
-      avgSatisfaction
+      avgSatisfaction,
+      feedbackCount: feedbackRecords.length
     };
   }, [unit, unitActions, unitAttendance]);
 
@@ -218,7 +219,10 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
             <span className="text-xs text-[#1351B4] font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Acumulado</span>
           </div>
           <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-[#1351B4] rounded-full w-[74%]"></div>
+            <div 
+              className="h-full bg-[#1351B4] rounded-full transition-all" 
+              style={{ width: `${Math.min(100, (unitMetrics.totalHours / 40) * 100)}%` }}
+            ></div>
           </div>
         </div>
 
@@ -234,12 +238,17 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-black text-[#0C326F] tracking-tight flex items-center gap-1">
-              {unitMetrics.avgSatisfaction}
+              {unitMetrics.feedbackCount > 0 ? unitMetrics.avgSatisfaction : '0.0'}
             </span>
-            <span className="text-xs text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">/ 5.0</span>
+            <span className="text-xs text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+              {unitMetrics.feedbackCount > 0 ? `${unitMetrics.feedbackCount} avaliações` : '/ 5.0'}
+            </span>
           </div>
           <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-amber-500 rounded-full w-[96%]"></div>
+            <div 
+              className="h-full bg-amber-500 rounded-full transition-all" 
+              style={{ width: `${unitMetrics.feedbackCount > 0 ? (parseFloat(unitMetrics.avgSatisfaction) / 5) * 100 : 0}%` }}
+            ></div>
           </div>
         </div>
 
