@@ -92,7 +92,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       if (!isCentralSermacEmailAuthorized(cleanEmail)) {
         setAuthError({
           email: cleanEmail,
-          message: `O e-mail informado "${cleanEmail}" NÃO possui autorização para o perfil de Gestão Central (SERMAC).\n\nO acesso à Coordenação Geral é estritamente restrito aos e-mails homologados pela Secretaria de Saúde (SMS Recife).`,
+          message: `O e-mail informado "${cleanEmail}" NÃO possui autorização para o perfil de Gestão Central (SERMAC).\n\nO acesso à Coordenação Geral é estritamente restrito aos e-mails homologados pela SERMAC.`,
           isAccessDenied: true
         });
         return;
