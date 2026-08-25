@@ -397,6 +397,22 @@ export default function App() {
     setDncList(prev => prev.map(d => d.id === dncId ? { ...d, status } : d));
   };
 
+  const handleGlobalExportCSV = () => {
+    const headers = 'Código;Tema;Eixo Temático;Unidade;Docente;Categoria Instrutora;Carga Horária;Modalidade;Presentes;Status\n';
+    const rows = actions.map(a => 
+      `"${a.code}";"${a.title}";"${a.thematicAxis}";"${a.unitName}";"${a.instructorName}";"${a.instructorCategory}";"${a.workloadHours}";"${a.modality}";"${a.attendedCount}";"${a.status}"`
+    ).join('\n');
+
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `SERMAC_Relatorio_Consolidado_EPS_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // UI State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -421,6 +437,12 @@ export default function App() {
         }}
         onOpenAiDiagnosis={() => setIsAiDiagnosisOpen(true)}
         onOpenPaepsPlan={() => setIsPaepsPlanOpen(true)}
+        onOpenCnesModal={() => {
+          setCnesTargetUnitId(selectedUnitId || units[0]?.id || '');
+          setIsCnesModalOpen(true);
+        }}
+        onOpenCensusModal={(u) => setSelectedCensusUnit(u || currentUnit)}
+        onExportCsv={handleGlobalExportCSV}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
@@ -464,6 +486,9 @@ export default function App() {
                 setCnesTargetUnitId(unitId);
                 setIsCnesModalOpen(true);
               }}
+              onOpenCancelModal={(action) => setSelectedActionToCancel(action)}
+              onEditAction={handleEditAction}
+              onDeleteAction={handleDeleteAction}
             />
           )}
 
@@ -512,15 +537,6 @@ export default function App() {
           )}
 
         </main>
-
-        {/* Footer */}
-        <footer className="bg-white border-t border-slate-200 py-3.5 px-6 text-center text-xs text-slate-500 print:hidden mt-auto">
-          <div className="max-w-7xl mx-auto flex items-center justify-center">
-            <span className="text-slate-600 font-medium">
-              <strong className="text-slate-800">EPS-SUS SERMAC</strong> • Sistema Municipal de Educação Permanente em Saúde e Qualificação do Cuidado
-            </span>
-          </div>
-        </footer>
       </div>
 
       {/* Modals */}
@@ -528,6 +544,7 @@ export default function App() {
         <NewActionModal
           units={units}
           selectedUnitId={selectedUnitId}
+          currentRole={currentRole}
           actionToEdit={actionToEdit}
           onClose={() => {
             setIsNewActionOpen(false);
@@ -548,6 +565,7 @@ export default function App() {
           onOpenCertificate={(record) => setSelectedCertificateRecord(record)}
           onEditAction={handleEditAction}
           onDeleteAction={handleDeleteAction}
+          onOpenCancelModal={(action) => setSelectedActionToCancel(action)}
         />
       )}
 

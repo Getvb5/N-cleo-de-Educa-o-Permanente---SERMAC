@@ -9,6 +9,8 @@ export interface AuthUser {
   cpf?: string;
   unitId?: string;
   unitName?: string;
+  declaredUnitIds?: string[];
+  declaredUnitNames?: string[];
   avatarInitials?: string;
   jobTitle?: string;
   photoUrl?: string;
@@ -104,7 +106,8 @@ export type ProfessionalCategory =
   | 'Recepcionista / Atendimento'
   | 'Agente Administrativo / Faturamento'
   | 'Higienização e Apoio Operacional'
-  | 'Condutor de Ambulância / Transporte';
+  | 'Condutor de Ambulância / Transporte'
+  | 'Outro';
 
 export type InstructorCategory =
   | 'Facilitador Local NEPS (Unidade)'
@@ -131,13 +134,15 @@ export type ThematicAxis =
 export type Modality = 'Presencial' | 'Híbrido' | 'EAD / Online';
 
 export type ActiveMethodology =
+  | 'Palestra'
   | 'Oficina Prática / Hands-on'
   | 'Simulação Realística / Cenário Clínico'
   | 'Roda de Conversa / Problematização (Arco de Maguerez)'
   | 'Estudo de Casos Clínicos Interprofissionais'
   | 'Exposição Dialogada com Dinâmica de Grupo'
   | 'Instrução no Posto de Trabalho (In Loco)'
-  | 'Webinar com Fórum de Debates';
+  | 'Webinar com Fórum de Debates'
+  | 'Outro';
 
 export type ActionStatus = 'planejada' | 'em_andamento' | 'concluida' | 'cancelada';
 
@@ -153,8 +158,10 @@ export interface TrainingAction {
   instructorCategory: InstructorCategory;
   instructorAffiliation?: string;
   targetCategories: ProfessionalCategory[];
+  customTargetCategory?: string; // Descrição quando 'Outro' é selecionado
   modality: Modality;
   methodology: ActiveMethodology;
+  customMethodology?: string; // Descrição quando 'Outro' é selecionado
   workloadHours: number;
   dateStart: string;
   dateEnd: string;

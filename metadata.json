@@ -1,5 +1,5 @@
 {
-  "name": "NEPS - SERMAC",
+  "name": "SERMAC EDUCA",
   "description": "Sistema integrado de Educação Permanente em Saúde para coleta de temas, categorias profissionais treinadas e instrutoras, monitoramento de indicadores e registro de frequência para Núcleo NEPS - Unidade e Gestão Central - SERMAC.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

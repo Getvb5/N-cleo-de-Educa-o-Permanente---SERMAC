@@ -19,12 +19,18 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { HealthUnit, AuthUser, UserRole } from '../types';
+import { SermacEducaLogo } from './SermacEducaLogo';
 import { 
   isCentralSermacEmailAuthorized,
   isCentralSermacPasscodeValid,
+  isNepsEmailAuthorized,
+  getAuthorizedNepsUnit,
   AUTHORIZED_SERMAC_USERS, 
   DEFAULT_NEPS_USERS, 
-  DEFAULT_PARTICIPANT_USER 
+  DEFAULT_PARTICIPANT_USER,
+  AUTHORIZED_NEPS_PROFILES,
+  findNepsProfileByUnitId,
+  findNepsUserByEmail
 } from '../data/mockData';
 
 interface AuthScreenProps {
@@ -36,6 +42,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   // State for Unit selections
   const [selectedUnitId, setSelectedUnitId] = useState<string>(units[0]?.id || 'unit-159');
   const [participantUnitId, setParticipantUnitId] = useState<string>(units[0]?.id || 'unit-159');
+  const [participantUnitIds, setParticipantUnitIds] = useState<string[]>([units[0]?.id || 'unit-159']);
+  const [showMultiUnitSelect, setShowMultiUnitSelect] = useState<boolean>(false);
   
   // Institutional Account inputs per profile
   // 1. Central SERMAC (strict controlled access)
@@ -128,7 +136,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
     }
 
     // =========================================================================
-    // 2. NÚCLEO NEPS - UNIDADE — OPEN ACCESS WITH INSTITUTIONAL PROFILE
+    // 2. NÚCLEO NEPS - UNIDADE — STRICT INSTITUTIONAL PROFILE ACCESS
     // =========================================================================
     if (role === 'NEPS_UNIT') {
       const cleanEmail = nepsEmail.trim().toLowerCase();
@@ -139,24 +147,42 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         return;
       }
 
-      const currentUnit = units.find(u => u.id === (targetUnitId || selectedUnitId)) || units[0];
-      const matched = DEFAULT_NEPS_USERS.find(u => u.unitId === currentUnit.id);
-      const displayName = nepsName.trim() || currentUnit.coordinatorName || 'Coordenação NEPS';
+      // Check if email is in the authorized NEPS coordinators / managers roster
+      const isAuth = isNepsEmailAuthorized(cleanEmail);
+      if (!isAuth) {
+        setAuthError({
+          message: `Acesso Restrito: O e-mail informado (${cleanEmail}) não possui autorização homologada para acesso aos Núcleos NEPS da rede municipal. Verifique o endereço funcional informado ou solicite credenciamento junto à SERMAC Central.`,
+        });
+        return;
+      }
+
+      // Check matching profile and unit
+      const profile = getAuthorizedNepsUnit(cleanEmail);
+      const matched = findNepsUserByEmail(cleanEmail, targetUnitId || selectedUnitId) ||
+        DEFAULT_NEPS_USERS.find(u => u.email.toLowerCase() === cleanEmail);
+
+      const targetUnitFinal = profile 
+        ? (units.find(u => u.id === profile.unitId) || units.find(u => u.id === (targetUnitId || selectedUnitId)) || units[0])
+        : (matched?.unitId 
+            ? (units.find(u => u.id === matched.unitId) || units.find(u => u.id === (targetUnitId || selectedUnitId)) || units[0])
+            : (units.find(u => u.id === (targetUnitId || selectedUnitId)) || units[0]));
+
+      const displayName = nepsName.trim() || matched?.name || profile?.coordinatorName || targetUnitFinal.coordinatorName || 'Coordenação NEPS';
 
       const nepsUser: AuthUser = {
         id: matched?.id || `usr-neps-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
         name: displayName,
         email: cleanEmail,
         role: 'NEPS_UNIT',
-        registrationNumber: matched?.registrationNumber || 'COREN/CRM-PE',
-        unitId: currentUnit.id,
-        unitName: currentUnit.name,
-        jobTitle: `Coordenação NEPS • ${currentUnit.name}`,
-        avatarInitials: displayName.substring(0, 2).toUpperCase(),
+        registrationNumber: matched?.registrationNumber || profile?.registrationNumber || 'COREN/CRM-PE',
+        unitId: targetUnitFinal.id,
+        unitName: targetUnitFinal.name,
+        jobTitle: matched?.jobTitle || profile?.roleTitle || `Coordenação NEPS • ${targetUnitFinal.name}`,
+        avatarInitials: matched?.avatarInitials || profile?.avatarInitials || displayName.substring(0, 2).toUpperCase(),
         authProvider: 'institutional'
       };
 
-      onLoginSuccess(nepsUser, currentUnit.id);
+      onLoginSuccess(nepsUser, targetUnitFinal.id);
       return;
     }
 
@@ -171,7 +197,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       return;
     }
 
-    const currentUnit = units.find(u => u.id === (targetUnitId || participantUnitId)) || units[0];
+    // Determine all autodeclared units
+    const effectiveUnitIds = Array.from(new Set(
+      participantUnitIds.length > 0 ? participantUnitIds : [participantUnitId]
+    ));
+    const effectiveUnitsList = units.filter(u => effectiveUnitIds.includes(u.id));
+    const primaryUnit = effectiveUnitsList.find(u => u.id === (targetUnitId || participantUnitId)) || effectiveUnitsList[0] || units[0];
     const displayName = partName.trim() || 'Profissional de Saúde SUS';
     
     const partUser: AuthUser = {
@@ -179,13 +210,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       name: displayName,
       email: cleanEmail,
       registrationNumber: 'SUS-PE-2026',
-      unitId: currentUnit.id,
-      unitName: currentUnit.name,
+      unitId: primaryUnit.id,
+      unitName: primaryUnit.name,
+      declaredUnitIds: effectiveUnitsList.map(u => u.id),
+      declaredUnitNames: effectiveUnitsList.map(u => u.name),
       avatarInitials: displayName.substring(0, 2).toUpperCase(),
       authProvider: 'institutional'
     };
 
-    onLoginSuccess(partUser, currentUnit.id);
+    onLoginSuccess(partUser, primaryUnit.id);
   };
 
   // Update NEPS coordinator selection when unit changes
@@ -203,13 +236,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded bg-white text-[#0C326F] font-black text-xl flex items-center justify-center shadow-xs">
-              +
-            </div>
+            <SermacEducaLogo size="md" />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold tracking-tight text-white">
-                  NEPS <span className="text-blue-200">SERMAC</span>
+                  SERMAC <span className="text-blue-200">EDUCA</span>
                 </h1>
                 <span className="text-[11px] bg-white/20 text-white font-bold px-2 py-0.5 rounded">
                   PNEPS / SUS
@@ -421,8 +452,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           <div className="bg-white border-2 border-emerald-600 rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
             
             <div className="absolute top-0 right-0 bg-emerald-700 text-white px-3 py-1 text-[10px] font-bold uppercase rounded-bl-lg tracking-wider flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" />
-              Acesso Livre
+              <Lock className="w-3 h-3" />
+              Acesso Homologado
             </div>
 
             <div>
@@ -465,7 +496,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
                 <div className="space-y-1.5 pt-1">
                   <label className="block text-[11px] font-bold text-slate-700">
-                    E-mail Funcional / Institucional:
+                    E-mail Funcional Homologado:
                   </label>
                   <div className="relative">
                     <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -502,8 +533,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 </div>
 
                 <div className="p-2 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-900 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                  <span>Acesso institucional imediato para a coordenação da unidade.</span>
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span>Acesso restrito à equipe e coordenação homologada dos Núcleos NEPS.</span>
                 </div>
               </div>
             </div>
@@ -554,20 +585,76 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
               {/* Form: Participant info */}
               <div className="mt-4 p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2.5">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Sua Unidade de Lotação:
-                  </label>
-                  <select
-                    value={participantUnitId}
-                    onChange={(e) => setParticipantUnitId(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded px-2.5 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-purple-600 cursor-pointer shadow-2xs"
-                  >
-                    {units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700">
+                      Unidade de Lotação Autodeclarada *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowMultiUnitSelect(!showMultiUnitSelect)}
+                      className="text-[10px] text-purple-700 font-semibold hover:underline"
+                    >
+                      {showMultiUnitSelect ? 'Modo simples' : '+ Mais de 1 unidade?'}
+                    </button>
+                  </div>
+
+                  {!showMultiUnitSelect ? (
+                    <select
+                      value={participantUnitId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setParticipantUnitId(val);
+                        setParticipantUnitIds([val]);
+                      }}
+                      className="w-full bg-white border border-slate-300 rounded px-2.5 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-purple-600 cursor-pointer shadow-2xs"
+                    >
+                      {units.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.type})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="space-y-1.5 bg-white border border-purple-200 rounded-lg p-2 max-h-36 overflow-y-auto">
+                      <p className="text-[10px] text-slate-500 font-medium">
+                        Selecione as unidades do SUS onde você atua:
+                      </p>
+                      {units.map((u) => {
+                        const isChecked = participantUnitIds.includes(u.id);
+                        return (
+                          <label
+                            key={u.id}
+                            className={`flex items-center gap-2 p-1.5 rounded text-[11px] cursor-pointer transition ${
+                              isChecked ? 'bg-purple-50 text-purple-900 font-bold' : 'text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  const updated = [...participantUnitIds, u.id];
+                                  setParticipantUnitIds(updated);
+                                  if (!participantUnitId) setParticipantUnitId(u.id);
+                                } else {
+                                  if (participantUnitIds.length > 1) {
+                                    const updated = participantUnitIds.filter(id => id !== u.id);
+                                    setParticipantUnitIds(updated);
+                                    if (participantUnitId === u.id) setParticipantUnitId(updated[0]);
+                                  }
+                                }
+                              }}
+                              className="rounded text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>{u.name} ({u.type})</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    🎯 O portal retornará apenas os cursos ofertados por sua(s) unidade(s) selecionada(s).
+                  </p>
                 </div>
 
                 <div className="space-y-1.5 pt-1">
@@ -637,7 +724,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           <div className="space-y-0.5">
             <strong className="text-slate-900 font-bold block">Controle de Acesso por Papéis (RBAC) e Segurança Institucional</strong>
             <p className="text-[11px] text-slate-600">
-              O acesso ao sistema é organizado por perfis funcionais da rede municipal. O acesso à <strong className="text-[#0C326F]">Gestão Central SERMAC</strong> é estritamente controlado e requer validação de chave de segurança institucional e e-mail homologado pela SMS Recife. Os perfis de <strong className="text-emerald-700">Coordenação NEPS Unidade</strong> e <strong className="text-purple-700">Portal do Participante</strong> possuem acesso direto para os profissionais e unidades de saúde.
+              O acesso aos perfis de <strong className="text-[#0C326F]">Gestão Central SERMAC</strong> e <strong className="text-emerald-700">Coordenação NEPS Unidade</strong> é restrito e exige e-mails funcionais previamente homologados na SMS Recife. O <strong className="text-purple-700">Portal do Participante</strong> é aberto aos profissionais e estagiários do SUS para validação de frequência, avaliações de reação e emissão de certificados.
             </p>
           </div>
         </div>

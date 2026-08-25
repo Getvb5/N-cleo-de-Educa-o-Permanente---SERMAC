@@ -90,65 +90,6 @@ export const OfficialIndicatorsPanel: React.FC<OfficialIndicatorsPanelProps> = (
   return (
     <div className="space-y-6">
       
-      {/* Header with Title & Filter Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-300 border-l-4 border-l-[#1351B4] p-4 sm:p-5 rounded-lg shadow-xs">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <span className="px-2.5 py-0.5 text-xs font-bold tracking-wider bg-[#EBF2FC] text-[#0C326F] border border-[#1351B4]/30 rounded uppercase">
-              Painel Oficial SERMAC / NEPS Recife
-            </span>
-            <span className="text-xs text-slate-600 font-medium">• Sistema de Monitoramento de EPS</span>
-          </div>
-          <h2 className="text-xl font-bold text-[#0C326F] flex items-center gap-2">
-            Indicadores de Educação Permanente em Saúde
-          </h2>
-          <p className="text-xs text-slate-600">
-            Acompanhamento, execução do planejamento, adesão dos profissionais e integração com a Escola de Saúde do Recife (ESR).
-          </p>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-3 py-1.5">
-            <Calendar className="w-4 h-4 text-slate-600" />
-            <select
-              value={selectedPeriod}
-              onChange={e => setSelectedPeriod(e.target.value)}
-              className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
-            >
-              <option value="Agosto/2026">Agosto / 2026</option>
-              <option value="Julho/2026">Julho / 2026</option>
-              <option value="Consolidado 2026">Consolidado 2026</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-3 py-1.5 max-w-xs">
-            <Building2 className="w-4 h-4 text-slate-600 flex-shrink-0" />
-            <select
-              value={selectedUnitId}
-              onChange={e => setSelectedUnitId(e.target.value)}
-              className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer truncate"
-            >
-              {units.length > 1 && <option value="all">Toda a Rede ({units.length} Unidades)</option>}
-              {units.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#1351B4] hover:bg-[#0C326F] text-white border border-[#0C326F] rounded text-xs font-bold transition-all shadow-xs cursor-pointer"
-            title="Imprimir ou Salvar em PDF"
-          >
-            <Printer className="w-4 h-4 text-white" />
-            <span>Exportar Relatório</span>
-          </button>
-        </div>
-      </div>
-
       {/* Grid of 6 Official Indicators Cards (Matching PDF Overview) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         

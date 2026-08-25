@@ -24,7 +24,9 @@ import {
   Trash2,
   AlertTriangle,
   Search,
-  Building
+  Building,
+  Ban,
+  CheckCircle2
 } from 'lucide-react';
 
 interface TrainingDetailsModalProps {
@@ -39,6 +41,7 @@ interface TrainingDetailsModalProps {
   onOpenCertificate: (record: AttendanceRecord) => void;
   onEditAction?: (action: TrainingAction) => void;
   onDeleteAction?: (actionId: string) => void;
+  onOpenCancelModal?: (action: TrainingAction) => void;
 }
 
 export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
@@ -52,7 +55,8 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
   onAddAttendance,
   onOpenCertificate,
   onEditAction,
-  onDeleteAction
+  onDeleteAction,
+  onOpenCancelModal
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'attendance' | 'feedback' | 'pin'>('info');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -201,6 +205,18 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {onOpenCancelModal && action.status !== 'cancelada' && action.status !== 'concluida' && (
+              <button
+                type="button"
+                onClick={() => onOpenCancelModal(action)}
+                className="px-3 py-1.5 bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/60 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                title="Cancelar esta ação formativa com justificativa oficial"
+              >
+                <Ban className="w-3.5 h-3.5 text-rose-300" />
+                <span className="hidden sm:inline">Cancelar Ação</span>
+              </button>
+            )}
+
             {onEditAction && (
               <button
                 onClick={() => {
@@ -331,6 +347,90 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
           {activeTab === 'info' && (
             <div className="space-y-6">
               
+              {/* If Action is Cancelled - Official Notice */}
+              {action.status === 'cancelada' && (
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-xs text-rose-900 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-rose-800 text-sm">
+                    <Ban className="w-4 h-4 text-rose-600" />
+                    <span>Ação Formatada Cancelada Oficialmente</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white/80 p-2.5 rounded-lg border border-rose-100">
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase font-bold">Categoria do Cancelamento:</span>
+                      <span className="font-semibold text-rose-950">{action.cancellationCategory || 'Institucional'}</span>
+                    </div>
+                    {action.cancellationDate && (
+                      <div>
+                        <span className="text-slate-500 block text-[10px] uppercase font-bold">Data do Cancelamento:</span>
+                        <span className="font-semibold text-slate-800">{action.cancellationDate}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold mb-0.5">Justificativa Registrada:</span>
+                    <p className="bg-white/80 p-2.5 rounded-lg border border-rose-100 italic text-slate-800">
+                      "{action.cancellationReason || 'Cancelamento registrado pela coordenação.'}"
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-rose-700">
+                    Esta ocorrência foi contabilizada no <strong>Indicador 5 — Taxa de Cancelamento de EP</strong> da SERMAC.
+                  </p>
+                </div>
+              )}
+
+              {/* Status Controller Bar (when not cancelled) */}
+              {action.status !== 'cancelada' && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Status da Ação:</span>
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                      <span className={`w-2 h-2 rounded-full ${
+                        action.status === 'concluida' ? 'bg-emerald-500' :
+                        action.status === 'em_andamento' ? 'bg-blue-500' : 'bg-slate-400'
+                      }`} />
+                      {action.status === 'concluida' ? 'Concluída' : action.status === 'em_andamento' ? 'Em Andamento' : 'Planejada'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {onUpdateStatus && action.status !== 'concluida' && (
+                      <>
+                        {action.status === 'planejada' && (
+                          <button
+                            type="button"
+                            onClick={() => onUpdateStatus(action.id, 'em_andamento')}
+                            className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Iniciar Atividade</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onUpdateStatus(action.id, 'concluida')}
+                          className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Concluir Ação</span>
+                        </button>
+                      </>
+                    )}
+
+                    {onOpenCancelModal && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenCancelModal(action)}
+                        className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                        title="Registrar cancelamento com justificativa oficial"
+                      >
+                        <Ban className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Cancelar Ação</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Meta Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <div>
@@ -365,11 +465,15 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                    Metodologia Ativa Adotada
+                    Metodologia Adotada
                   </h4>
                   <div className="bg-teal-50 border border-teal-200 p-3 rounded-lg text-xs font-medium text-teal-900">
-                    <strong className="block text-teal-950 font-bold mb-1">{action.methodology}</strong>
-                    Prática pedagógica baseada em problematização dos processos de trabalho e dinâmicas interprofissionais do SUS.
+                    <strong className="block text-teal-950 font-bold mb-1">
+                      {action.methodology === 'Outro' && action.customMethodology 
+                        ? `Outro: ${action.customMethodology}` 
+                        : action.methodology}
+                    </strong>
+                    Prática pedagógica baseada em problematização dos processos de trabalho e dinâmicas do SUS.
                   </div>
                 </div>
 
@@ -380,7 +484,7 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
                   <div className="flex flex-wrap gap-1.5">
                     {action.targetCategories.map((cat, idx) => (
                       <span key={idx} className="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium border border-slate-200">
-                        {cat}
+                        {cat === 'Outro' && action.customTargetCategory ? `Outro (${action.customTargetCategory})` : cat}
                       </span>
                     ))}
                   </div>

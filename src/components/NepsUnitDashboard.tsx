@@ -245,12 +245,12 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
 
       </div>
 
-      {/* TABS NAVIGATION */}
-      <div className="bg-white p-1 rounded-lg border border-slate-300 shadow-xs text-xs font-bold flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-1 sm:pb-0">
+      {/* NAVIGATION TABS */}
+      <div className="bg-white p-1.5 rounded-xl border border-slate-300 shadow-xs text-xs font-bold flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0">
           <button
             onClick={() => setActiveTab('acoes')}
-            className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+            className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'acoes'
                 ? 'bg-[#1351B4] text-white font-bold shadow-xs'
                 : 'text-slate-700 hover:bg-slate-100 font-semibold'
@@ -262,7 +262,7 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('indicadores')}
-            className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+            className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'indicadores'
                 ? 'bg-[#0C326F] text-white font-bold shadow-xs'
                 : 'text-slate-700 hover:bg-slate-100 font-semibold'
@@ -274,7 +274,7 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('frequencias')}
-            className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+            className={`py-2 px-3.5 rounded-lg flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'frequencias'
                 ? 'bg-[#1351B4] text-white font-bold shadow-xs'
                 : 'text-slate-700 hover:bg-slate-100 font-semibold'
@@ -282,50 +282,6 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
           >
             <Users className="w-4 h-4" />
             <span>Frequências ({unitAttendance.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('solicitar_dnc')}
-            className={`py-2.5 px-3.5 rounded flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
-              activeTab === 'solicitar_dnc'
-                ? 'bg-[#1351B4] text-white font-bold shadow-xs'
-                : 'text-slate-700 hover:bg-slate-100 font-semibold'
-            }`}
-          >
-            <Send className="w-4 h-4" />
-            <span>Solicitar DNC</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 ml-auto shrink-0">
-          {onOpenCnesModal && (
-            <button
-              onClick={() => onOpenCnesModal(unit.id)}
-              className="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-300 px-3 py-1.5 rounded font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Consultar e sincronizar profissionais ativos na base CNES / DATASUS"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-blue-700" />
-              <span>Base CNES ({unit.cnes || '0002135'})</span>
-            </button>
-          )}
-
-          {onOpenCensusModal && (
-            <button
-              onClick={() => onOpenCensusModal(unit)}
-              className="bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-300 px-3 py-1.5 rounded font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Atualizar quadro de servidores ativos para o cálculo do Índice de Atividade da EP"
-            >
-              <Users className="w-3.5 h-3.5 text-teal-700" />
-              <span>Censo de Ativos ({unit.totalStaff})</span>
-            </button>
-          )}
-
-          <button
-            onClick={onOpenNewAction}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Novo Treinamento</span>
           </button>
         </div>
       </div>
@@ -416,6 +372,19 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
 
                       {/* Quick Action Buttons */}
                       <div className="flex items-center gap-1 ml-1" onClick={(e) => e.stopPropagation()}>
+                        {onOpenCancelModal && action.status !== 'cancelada' && action.status !== 'concluida' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenCancelModal(action);
+                            }}
+                            className="p-1 rounded bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-700 transition"
+                            title="Cancelar Treinamento (Justificativa Oficial)"
+                          >
+                            <Ban className="w-3.5 h-3.5 text-rose-500" />
+                          </button>
+                        )}
                         {onEditAction && (
                           <button
                             type="button"

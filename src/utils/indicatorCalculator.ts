@@ -113,7 +113,7 @@ export function calculateSermacIndicators(
 
   const overallAssiduidadeRate = totalExpectedInTheme > 0 
     ? Math.min(100, Math.round((totalTrainedInTheme / totalExpectedInTheme) * 1000) / 10) 
-    : 100;
+    : 0;
 
   // 4. INDICADOR 4: Taxa de Adesão por Categoria Profissional aos Treinamentos Ofertados
   // Fórmula: (Nº de profissionais da categoria que participaram ÷ Nº de profissionais da categoria elegíveis) × 100 (Meta: >= 90%)
@@ -218,7 +218,7 @@ export function calculateSermacIndicators(
       totalExpectedInTheme,
       rate: overallAssiduidadeRate,
       meta: OFFICIAL_INDICATOR_METAS.ASSIDUIDADE_TEMA,
-      isGoalMet: overallAssiduidadeRate >= OFFICIAL_INDICATOR_METAS.ASSIDUIDADE_TEMA,
+      isGoalMet: totalExpectedInTheme > 0 && overallAssiduidadeRate >= OFFICIAL_INDICATOR_METAS.ASSIDUIDADE_TEMA,
       byAction: assiduidadeByAction
     },
     adesaoPorCategoria: {

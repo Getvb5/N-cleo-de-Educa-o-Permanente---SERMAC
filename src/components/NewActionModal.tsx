@@ -6,7 +6,8 @@ import {
   ProfessionalCategory, 
   InstructorCategory, 
   ActiveMethodology, 
-  Modality 
+  Modality,
+  UserRole
 } from '../types';
 import { 
   ALL_THEMATIC_AXES, 
@@ -25,12 +26,15 @@ import {
   Check, 
   Loader2,
   HelpCircle,
-  CheckCircle2
+  CheckCircle2,
+  Building2,
+  Lock
 } from 'lucide-react';
 
 interface NewActionModalProps {
   units: HealthUnit[];
   selectedUnitId: string;
+  currentRole?: UserRole;
   actionToEdit?: TrainingAction | null;
   onClose: () => void;
   onSave: (action: TrainingAction) => void;
@@ -39,13 +43,20 @@ interface NewActionModalProps {
 export const NewActionModal: React.FC<NewActionModalProps> = ({
   units,
   selectedUnitId,
+  currentRole,
   actionToEdit = null,
   onClose,
   onSave
 }) => {
   const isEditing = Boolean(actionToEdit);
+  const isUnitRole = currentRole === 'NEPS_UNIT';
 
-  const [unitId, setUnitId] = useState(actionToEdit?.unitId || selectedUnitId || (units[0]?.id || ''));
+  // If user is logged in as NEPS unit, lock the unit to their logged-in unit
+  const initialUnitId = isUnitRole && selectedUnitId 
+    ? selectedUnitId 
+    : (actionToEdit?.unitId || selectedUnitId || (units[0]?.id || ''));
+
+  const [unitId, setUnitId] = useState(initialUnitId);
   const [title, setTitle] = useState(actionToEdit?.title || '');
   const [thematicAxis, setThematicAxis] = useState<ThematicAxis>(actionToEdit?.thematicAxis || ALL_THEMATIC_AXES[0]);
   const [description, setDescription] = useState(actionToEdit?.description || '');
@@ -58,14 +69,15 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
       'Técnico(a) de Enfermagem'
     ]
   );
+  const [customTargetCategory, setCustomTargetCategory] = useState(actionToEdit?.customTargetCategory || '');
   const [modality, setModality] = useState<Modality>(actionToEdit?.modality || 'Presencial');
   const [methodology, setMethodology] = useState<ActiveMethodology>(actionToEdit?.methodology || ALL_METHODOLOGIES[0]);
+  const [customMethodology, setCustomMethodology] = useState(actionToEdit?.customMethodology || '');
   const [workloadHours, setWorkloadHours] = useState(actionToEdit?.workloadHours || 4);
   const [dateStart, setDateStart] = useState(actionToEdit?.dateStart || new Date().toISOString().split('T')[0]);
   const [timeSchedule, setTimeSchedule] = useState(actionToEdit?.timeSchedule || '08:30 às 12:30');
   const [location, setLocation] = useState(actionToEdit?.location || 'Auditório da Unidade');
-  const [maxSeats, setMaxSeats] = useState(actionToEdit?.maxSeats || 30);
-  const [plannedAttendeesCount, setPlannedAttendeesCount] = useState(actionToEdit?.plannedAttendeesCount || actionToEdit?.maxSeats || 30);
+  const [plannedAttendeesCount, setPlannedAttendeesCount] = useState(actionToEdit?.plannedAttendeesCount || 30);
   const [eligibleProfessionalsCount, setEligibleProfessionalsCount] = useState(actionToEdit?.eligibleProfessionalsCount || 35);
   const [isEsrLinked, setIsEsrLinked] = useState(Boolean(actionToEdit?.isEsrLinked));
   const [esrLinkType, setEsrLinkType] = useState(actionToEdit?.esrLinkType || 'Parceria Pedagógica ESR');
@@ -77,7 +89,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
   const [materials, setMaterials] = useState<string[]>(actionToEdit?.materialsNeeded || []);
   const [aiGeneratedSuccess, setAiGeneratedSuccess] = useState(false);
 
-  const selectedUnit = units.find(u => u.id === unitId) || units[0];
+  const selectedUnit = units.find(u => u.id === (isUnitRole ? selectedUnitId : unitId)) || units[0];
 
   const handleToggleCategory = (category: ProfessionalCategory) => {
     if (targetCategories.includes(category)) {
@@ -113,7 +125,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           theme: title,
-          targetAudience: targetCategories.join(', '),
+          targetAudience: targetCategories.map(c => c === 'Outro' && customTargetCategory ? `Outro (${customTargetCategory})` : c).join(', '),
           instructorCategory,
           modality,
           workloadHours,
@@ -164,10 +176,22 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
     }
   };
 
+  const effectiveUnitId = isUnitRole && selectedUnitId ? selectedUnitId : unitId;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !instructorName) {
       alert('Preencha os campos obrigatórios.');
+      return;
+    }
+
+    if (methodology === 'Outro' && !customMethodology.trim()) {
+      alert('Por favor, descreva a metodologia no campo "Outro".');
+      return;
+    }
+
+    if (targetCategories.includes('Outro') && !customTargetCategory.trim()) {
+      alert('Por favor, especifique a(s) outra(s) categoria(s) profissional(is) alvo.');
       return;
     }
 
@@ -177,21 +201,23 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
         title,
         thematicAxis,
         description: description || actionToEdit.description || `Capacitação permanente sobre ${title} para qualificação do cuidado no SUS.`,
-        unitId,
+        unitId: effectiveUnitId,
         unitName: selectedUnit?.name || actionToEdit.unitName,
         instructorName,
         instructorCategory,
         instructorAffiliation: instructorAffiliation || selectedUnit?.name,
         targetCategories,
+        customTargetCategory: targetCategories.includes('Outro') ? customTargetCategory : undefined,
         modality,
         methodology,
+        customMethodology: methodology === 'Outro' ? customMethodology : undefined,
         workloadHours: Number(workloadHours),
         dateStart,
         dateEnd: dateStart,
         timeSchedule,
         location,
-        maxSeats: Number(maxSeats),
-        plannedAttendeesCount: Number(plannedAttendeesCount) || Number(maxSeats) || actionToEdit.plannedAttendeesCount || 30,
+        maxSeats: actionToEdit.maxSeats || 999,
+        plannedAttendeesCount: Number(plannedAttendeesCount) || actionToEdit.plannedAttendeesCount || 30,
         eligibleProfessionalsCount: Number(eligibleProfessionalsCount) || actionToEdit.eligibleProfessionalsCount || 35,
         isEsrLinked: Boolean(isEsrLinked),
         esrLinkType: isEsrLinked ? esrLinkType : undefined,
@@ -212,26 +238,28 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
       title,
       thematicAxis,
       description: description || `Capacitação permanente sobre ${title} para qualificação do cuidado no SUS.`,
-      unitId,
+      unitId: effectiveUnitId,
       unitName: selectedUnit?.name || 'Unidade de Saúde',
       instructorName,
       instructorCategory,
       instructorAffiliation: instructorAffiliation || selectedUnit?.name,
       targetCategories,
+      customTargetCategory: targetCategories.includes('Outro') ? customTargetCategory : undefined,
       modality,
       methodology,
+      customMethodology: methodology === 'Outro' ? customMethodology : undefined,
       workloadHours: Number(workloadHours),
       dateStart,
       dateEnd: dateStart,
       timeSchedule,
       location,
-      maxSeats: Number(maxSeats),
+      maxSeats: 999,
       status: 'planejada',
       checkinPin: randomPin,
       enrolledCount: 0,
       attendedCount: 0,
       satisfactionAverage: 0,
-      plannedAttendeesCount: Number(plannedAttendeesCount) || Number(maxSeats) || 30,
+      plannedAttendeesCount: Number(plannedAttendeesCount) || 30,
       eligibleProfessionalsCount: Number(eligibleProfessionalsCount) || 35,
       isEsrLinked: Boolean(isEsrLinked),
       esrLinkType: isEsrLinked ? esrLinkType : undefined,
@@ -350,17 +378,30 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">
                   Unidade de Saúde Promotora <span className="text-rose-500">*</span>
                 </label>
-                <select
-                  value={unitId}
-                  onChange={(e) => setUnitId(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                >
-                  {units.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.type})
-                    </option>
-                  ))}
-                </select>
+                {isUnitRole ? (
+                  <div className="w-full bg-slate-100 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-800 font-semibold flex items-center justify-between">
+                    <div className="flex items-center gap-2 truncate">
+                      <Building2 className="w-4 h-4 text-blue-700 shrink-0" />
+                      <span className="truncate">{selectedUnit?.name || 'Unidade de Saúde'} ({selectedUnit?.type})</span>
+                    </div>
+                    <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200 flex items-center gap-1 shrink-0">
+                      <Lock className="w-2.5 h-2.5" />
+                      Unidade Logada
+                    </span>
+                  </div>
+                ) : (
+                  <select
+                    value={unitId}
+                    onChange={(e) => setUnitId(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.type})
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -483,6 +524,26 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
                 );
               })}
             </div>
+
+            {/* Custom category description when 'Outro' is checked */}
+            {targetCategories.includes('Outro') && (
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl space-y-1.5 animate-fadeIn">
+                <label className="block text-amber-950 font-bold text-xs">
+                  Especifique a(s) outra(s) categoria(s) profissional(is) alvo: <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customTargetCategory}
+                  onChange={(e) => setCustomTargetCategory(e.target.value)}
+                  placeholder="Ex: Residentes Multiprofissionais em Saúde da Família, Estagiários de Farmácia, Auxiliares de Laboratório..."
+                  className="w-full bg-white border border-amber-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+                <p className="text-[11px] text-amber-800">
+                  Descreva claramente as categorias para constar no registro da ação e na emissão dos certificados.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Section 4: Operational Data */}
@@ -491,7 +552,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
               4. Modalidade, Metodologia & Logística
             </h3>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
                   Modalidade <span className="text-rose-500">*</span>
@@ -509,7 +570,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Metodologia Ativa <span className="text-rose-500">*</span>
+                  Metodologia <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={methodology}
@@ -537,19 +598,25 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  Limite de Vagas
-                </label>
-                <input
-                  type="number"
-                  min={5}
-                  max={500}
-                  value={maxSeats}
-                  onChange={(e) => setMaxSeats(Number(e.target.value))}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
-                />
-              </div>
+              {/* Custom methodology description when 'Outro' is selected */}
+              {methodology === 'Outro' && (
+                <div className="col-span-full p-3 bg-blue-50 border border-blue-300 rounded-xl space-y-1.5 animate-fadeIn">
+                  <label className="block text-blue-950 font-bold text-xs">
+                    Descreva a metodologia utilizada: <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customMethodology}
+                    onChange={(e) => setCustomMethodology(e.target.value)}
+                    placeholder="Ex: Painel integrado com dinâmicas corporais, teatro do oprimido e pactuação de rotinas..."
+                    className="w-full bg-white border border-blue-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                  <p className="text-[11px] text-blue-800">
+                    Especifique a metodologia pedagógica a ser aplicada no treinamento.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
@@ -577,7 +644,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
                 />
               </div>
 
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-slate-700 font-semibold mb-1">
                   Local / Sala de Realização
                 </label>
@@ -585,19 +652,19 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Ex: Sala de Reuniões / Auditório Principal"
+                  placeholder="Ex: Auditório Principal / Sala NEPS"
                   className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
             </div>
           </div>
 
-          {/* Section 5: Indicator Metas & ESR Linkage */}
+          {/* Section 5: Indicator Metas */}
           <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">
-                  5. Planejamento de Indicadores & Vinculação à Escola de Saúde do Recife (ESR)
+                  5. Planejamento de Indicadores
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Parâmetros para cálculo automático do Coeficiente de Assiduidade e Taxa de Adesão
@@ -605,36 +672,19 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1 text-xs">
-                  Profissionais Previstos para este Tema (Denominador Indicador 3)
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={plannedAttendeesCount}
-                  onChange={(e) => setPlannedAttendeesCount(Number(e.target.value))}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
-                  placeholder="Ex: 30"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1 text-xs">
-                  Total de Profissionais Elegíveis na Categoria (Indicador 4)
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={eligibleProfessionalsCount}
-                  onChange={(e) => setEligibleProfessionalsCount(Number(e.target.value))}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
-                  placeholder="Ex: 35"
-                />
-              </div>
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1 text-xs">
+                Profissionais Previstos para este Tema (Denominador Indicador 3)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={plannedAttendeesCount}
+                onChange={(e) => setPlannedAttendeesCount(Number(e.target.value))}
+                className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                placeholder="Ex: 30"
+              />
             </div>
 
             {/* ESR Checkbox */}
@@ -661,12 +711,13 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
                   <span className="text-xs text-slate-600 font-medium">Tipo:</span>
                   <select
                     value={esrLinkType}
-                    onChange={(e) => setEsrLinkType(e.target.value)}
+                    onChange={(e) => setEsrLinkType(e.target.value as any)}
                     className="bg-slate-50 border border-purple-200 text-xs rounded-md px-2.5 py-1.5 text-purple-950 font-semibold focus:outline-none"
                   >
                     <option value="Parceria Pedagógica ESR">Parceria Pedagógica ESR</option>
                     <option value="Certificação Oficial ESR">Certificação Oficial ESR</option>
-                    <option value="Instrutoria Compartilhada">Instrutoria Compartilhada</option>
+                    <option value="Instrutoria Conjunta">Instrutoria Conjunta</option>
+                    <option value="Programa Estratégico ESR">Programa Estratégico ESR</option>
                   </select>
                 </div>
               )}
@@ -689,7 +740,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
               className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-lg shadow-md hover:shadow-lg transition flex items-center space-x-2"
             >
               <Check className="w-4 h-4" />
-              <span>{isEditing ? 'Salvar Alterações da Ação' : 'Pactuar e Salvar Ação EPS'}</span>
+              <span>Salvar Ação</span>
             </button>
           </div>
 

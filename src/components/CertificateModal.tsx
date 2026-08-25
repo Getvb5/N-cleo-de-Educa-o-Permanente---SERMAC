@@ -7,7 +7,13 @@ import {
   Award, 
   CheckCircle2, 
   QrCode, 
-  Loader2
+  Loader2,
+  Building,
+  MapPin,
+  ShieldCheck,
+  Calendar,
+  Clock,
+  Check
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
@@ -71,6 +77,9 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
     month: 'long',
     year: 'numeric'
   });
+
+  const participantUnit = record.participantUnitName || record.unitName;
+  const courseUnit = record.unitName;
 
   return (
     <div 
@@ -150,7 +159,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
               </div>
               <div className="text-left">
                 <h3 className="font-black text-slate-800 text-sm sm:text-base tracking-wide uppercase">
-                  Secretaria Municipal de Saúde • SESAU
+                  Secretaria Municipal de Saúde • SESAU Recife
                 </h3>
                 <p className="text-[11px] sm:text-xs font-semibold text-teal-700 tracking-wider uppercase">
                   Núcleo de Educação Permanente em Saúde (NEPS)
@@ -160,9 +169,11 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
             <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-black text-slate-900 tracking-wider mt-3 sm:mt-4">
               CERTIFICADO DE CAPACITAÇÃO EM SAÚDE
             </h1>
-            <p className="text-[11px] sm:text-xs text-slate-500 font-mono mt-1">
-              Código Autenticador: {record.certificateCode}
-            </p>
+            <div className="flex items-center justify-center gap-2 mt-1.5">
+              <span className="text-[11px] sm:text-xs text-slate-500 font-mono">
+                Código Autenticador: <strong>{record.certificateCode}</strong>
+              </span>
+            </div>
           </div>
 
           {/* Text Statement */}
@@ -173,15 +184,32 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
             <p className="text-lg sm:text-xl md:text-2xl font-serif font-bold text-slate-900 border-b-2 border-slate-300 inline-block px-4 sm:px-8 pb-1">
               {record.participantName}
             </p>
-            <p className="text-xs text-slate-600">
-              Categoria: <strong className="text-slate-800">{record.professionalCategory}</strong> | Matrícula SUS: <strong className="text-slate-800">{record.registrationNumber}</strong>{record.cpf ? <> | CPF: <strong className="text-slate-800">{record.cpf}</strong></> : null}
-            </p>
+
+            {/* Professional Credentials & Linked Unit */}
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-slate-600 max-w-2xl mx-auto">
+              <span>Categoria: <strong className="text-slate-800">{record.professionalCategory}</strong></span>
+              <span className="text-slate-300">•</span>
+              <span>Matrícula SUS: <strong className="text-slate-800">{record.registrationNumber}</strong></span>
+              {record.cpf && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span>CPF: <strong className="text-slate-800">{record.cpf}</strong></span>
+                </>
+              )}
+            </div>
+
+            {/* Explicit Unit of Origin / Lotação Badge */}
+            <div className="inline-flex items-center gap-1.5 bg-purple-50/90 border border-purple-200 text-purple-950 px-3.5 py-1.5 rounded-lg shadow-2xs text-xs">
+              <Building className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+              <span>Unidade de Lotação / Vínculo:</span>
+              <strong className="text-purple-900 font-bold">{participantUnit}</strong>
+            </div>
 
             <p className="max-w-2xl mx-auto text-justify md:text-center pt-2">
-              concluiu com êxito e frequência integral a ação de Educação Permanente em Saúde com o tema{' '}
+              lotado(a) na unidade de saúde <strong className="text-slate-900">{participantUnit}</strong>, concluiu com êxito e frequência integral a ação de Educação Permanente em Saúde com o tema{' '}
               <strong className="text-slate-900">"{record.actionTitle}"</strong>, correspondente ao eixo temático de{' '}
-              <em className="text-teal-800 font-medium">{record.thematicAxis}</em>, realizada na unidade{' '}
-              <strong className="text-slate-800">{record.unitName}</strong>, totalizando a carga horária de{' '}
+              <em className="text-teal-800 font-medium">{record.thematicAxis}</em>, promovida e realizada pelo Núcleo de Educação Permanente em Saúde (NEPS) da unidade{' '}
+              <strong className="text-slate-800">{courseUnit}</strong>, totalizando a carga horária de{' '}
               <strong className="text-slate-900 bg-amber-100 px-2 py-0.5 rounded font-mono">{record.workloadHours} horas</strong>.
             </p>
           </div>
@@ -189,11 +217,11 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
           {/* Signatures & Verification */}
           <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-end">
             
-            {/* Signature 1 */}
+            {/* Signature 1: Participant's Health Unit */}
             <div className="text-center">
               <div className="w-36 sm:w-44 h-0.5 bg-slate-400 mx-auto mb-2"></div>
-              <p className="font-semibold text-xs text-slate-800">Coordenação NEPS da Unidade</p>
-              <p className="text-[11px] text-slate-500">{record.unitName}</p>
+              <p className="font-semibold text-xs text-slate-800">Coordenação NEPS da Unidade de Lotação</p>
+              <p className="text-[11px] text-slate-600 font-medium">{participantUnit}</p>
             </div>
 
             {/* QR Code Validation */}
@@ -205,19 +233,22 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
               <span className="text-[9px] text-emerald-700 font-semibold flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Frequência Homologada
               </span>
+              <span className="text-[9px] text-purple-700 font-mono mt-0.5">
+                Lotação: {participantUnit.slice(0, 24)}
+              </span>
             </div>
 
-            {/* Signature 2 */}
+            {/* Signature 2: SERMAC SESAU */}
             <div className="text-center">
               <div className="w-36 sm:w-44 h-0.5 bg-slate-400 mx-auto mb-2"></div>
-              <p className="font-semibold text-xs text-slate-800">Coordenação do Núcleo de Educação Permanente em Saúde - SERMAC</p>
+              <p className="font-semibold text-xs text-slate-800">Coordenação Geral NEPS - SERMAC</p>
               <p className="text-[11px] text-slate-500">Secretaria Municipal de Saúde • SESAU</p>
             </div>
           </div>
 
           {/* Footer note */}
           <div className="mt-6 sm:mt-8 text-center text-[10px] sm:text-[11px] text-slate-400">
-            Emitido em {formattedDate} • Válido para fins de comprovação curricular e progressão no Plano de Cargos, Carreiras e Salários do SUS.
+            Emitido em {formattedDate} • Registrado sob a lotação de {participantUnit} • Válido para fins de comprovação curricular e progressão no Plano de Cargos, Carreiras e Salários do SUS.
           </div>
         </div>
 

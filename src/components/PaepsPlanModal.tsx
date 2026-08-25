@@ -346,7 +346,7 @@ export const PaepsPlanModal: React.FC<PaepsPlanModalProps> = ({
               1. Apresentação e Justificativa do LNT
             </h4>
             <p className="text-slate-700 leading-normal">
-              O <strong>Levantamento de Necessidades de Treinamento – LNT 2026</strong> consolida a identificação diagnóstica e participativa dos nós críticos nos processos de trabalho de todas as 19 unidades da rede de saúde (Policlínicas, Maternidades, Hospitais, Centros de Saúde, SAMU 192 e Laboratório Municipal). Conduzido pela Coordenação do Núcleo de Educação Permanente em Saúde - SERMAC em articulação direta com os Núcleos locais (NEPS), o LNT subsidia a elaboração de intervenções formativas contextualizadas para os <strong>{totalStaff} profissionais da rede municipal</strong>.
+              O <strong>Levantamento de Necessidades de Treinamento – LNT 2026</strong> consolida a identificação diagnóstica e participativa dos nós críticos nos processos de trabalho de todas as 19 unidades da rede de saúde (Policlínicas, Maternidades, Hospitais, Centros de Saúde, SAMU 192 e Laboratório Municipal), conduzido pela Coordenação do Núcleo de Educação Permanente em Saúde - SERMAC em articulação direta com os Núcleos locais (NEPS).
             </p>
           </div>
 
