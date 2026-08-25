@@ -78,7 +78,6 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
   const [cpf, setCpf] = useState(currentUser?.cpf || '');
   const [regNumber, setRegNumber] = useState(currentUser?.registrationNumber || '');
   const [category, setCategory] = useState<ProfessionalCategory>('Enfermeiro(a)');
-  const [participantUnitId, setParticipantUnitId] = useState(currentUser?.unitId || units[0]?.id || '');
   const [cnesMatch, setCnesMatch] = useState<CnesProfessional | null>(null);
   const [isSearchingCnes, setIsSearchingCnes] = useState(false);
   const [cnesLookupFeedback, setCnesLookupFeedback] = useState<string | null>(null);
@@ -86,63 +85,43 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
   // Track IDs of certificates issued in current session to ensure instantaneous Passport presence
   const [sessionIssuedIds, setSessionIssuedIds] = useState<Set<string>>(() => new Set());
 
-  // Autodeclared health units from login or profile
-  const [declaredUnitIds, setDeclaredUnitIds] = useState<string[]>(() => {
-    if (currentUser?.declaredUnitIds && currentUser.declaredUnitIds.length > 0) {
-      return currentUser.declaredUnitIds;
-    }
-    if (currentUser?.unitId) {
-      return [currentUser.unitId];
-    }
-    return [units[0]?.id || 'unit-159'];
-  });
-
-  // Modal to view/edit autodeclared units
-  const [showUnitManager, setShowUnitManager] = useState(false);
-  const [tempUnitIds, setTempUnitIds] = useState<string[]>(declaredUnitIds);
+  // Single unit of lotação from user's login
+  const userUnitId = currentUser?.unitId || units[0]?.id || 'unit-159';
+  const userUnit = useMemo(() => {
+    return units.find(u => u.id === userUnitId) || units[0];
+  }, [units, userUnitId]);
 
   // Catalog filters
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogStatusFilter, setCatalogStatusFilter] = useState<'todos' | 'planejada' | 'em_andamento' | 'concluida'>('todos');
 
-  // Sync user info and declared units if currentUser changes
+  // Sync user info if currentUser changes
   useEffect(() => {
     if (currentUser) {
       if (currentUser.name && !participantName) setParticipantName(currentUser.name);
       if (currentUser.registrationNumber && !regNumber) setRegNumber(currentUser.registrationNumber);
       if (currentUser.cpf && !cpf) setCpf(currentUser.cpf);
-      if (currentUser.unitId) setParticipantUnitId(currentUser.unitId);
-      if (currentUser.declaredUnitIds && currentUser.declaredUnitIds.length > 0) {
-        setDeclaredUnitIds(currentUser.declaredUnitIds);
-      } else if (currentUser.unitId) {
-        setDeclaredUnitIds([currentUser.unitId]);
-      }
     }
   }, [currentUser]);
 
-  // Declared unit objects
-  const declaredUnits = useMemo(() => {
-    return units.filter(u => declaredUnitIds.includes(u.id));
-  }, [units, declaredUnitIds]);
-
-  // STRICT REQUIREMENT: ONLY return courses offered by the autodeclared health units
+  // STRICT REQUIREMENT: ONLY return courses offered by the user's logged-in health unit
   const unitOfferedActions = useMemo(() => {
-    return actions.filter(a => declaredUnitIds.includes(a.unitId));
-  }, [actions, declaredUnitIds]);
+    return actions.filter(a => a.unitId === userUnitId);
+  }, [actions, userUnitId]);
 
-  // Active / Ongoing trainings available for check-in from autodeclared units
+  // Active / Ongoing trainings available for check-in from this unit
   const activeTrainings = useMemo(() => {
     return unitOfferedActions.filter(a => a.status === 'em_andamento' || a.status === 'planejada' || a.status === 'concluida');
   }, [unitOfferedActions]);
 
-  // Real-time matched action based on entered PIN (within declared units)
+  // Real-time matched action based on entered PIN (within user's unit)
   const pinMatchedAction = useMemo(() => {
     const cleanPin = pin.trim();
     if (cleanPin.length !== 4) return null;
     return unitOfferedActions.find(a => a.checkinPin.trim() === cleanPin && a.status !== 'cancelada') || null;
   }, [pin, unitOfferedActions]);
 
-  // Detect if PIN belongs to another non-declared unit
+  // Detect if PIN belongs to another health unit
   const otherUnitActionMatch = useMemo(() => {
     const cleanPin = pin.trim();
     if (cleanPin.length !== 4 || pinMatchedAction) return null;
@@ -166,26 +145,6 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
     });
   }, [unitOfferedActions, catalogStatusFilter, catalogSearch]);
 
-  // Update declared units handler
-  const handleSaveDeclaredUnits = (newUnitIds: string[]) => {
-    if (newUnitIds.length === 0) {
-      alert('Você precisa selecionar ao menos 1 unidade de atuação.');
-      return;
-    }
-    setDeclaredUnitIds(newUnitIds);
-    setShowUnitManager(false);
-    const newUnitObjects = units.filter(u => newUnitIds.includes(u.id));
-    if (currentUser && onUpdateCurrentUser) {
-      onUpdateCurrentUser({
-        ...currentUser,
-        unitId: newUnitIds[0],
-        unitName: newUnitObjects[0]?.name || currentUser.unitName,
-        declaredUnitIds: newUnitIds,
-        declaredUnitNames: newUnitObjects.map(u => u.name)
-      });
-    }
-  };
-
   // Live lookup logic for CNES
   const handlePerformCnesLookup = async (inputVal?: string) => {
     const rawValue = (inputVal || cpf || participantName).trim();
@@ -206,20 +165,7 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
       setParticipantName(localMatch.name);
       setCategory(localMatch.professionalCategory);
       setRegNumber(`CNS-${localMatch.cns.slice(-6)}`);
-      setParticipantUnitId(localMatch.unitId);
-      // Auto-add unit to declared units if not present
-      if (!declaredUnitIds.includes(localMatch.unitId)) {
-        const updated = [...declaredUnitIds, localMatch.unitId];
-        setDeclaredUnitIds(updated);
-        if (currentUser && onUpdateCurrentUser) {
-          onUpdateCurrentUser({
-            ...currentUser,
-            declaredUnitIds: updated,
-            declaredUnitNames: units.filter(u => updated.includes(u.id)).map(u => u.name)
-          });
-        }
-      }
-      setCnesLookupFeedback(`Profissional localizado no CNES da unidade ${localMatch.unitName}`);
+      setCnesLookupFeedback(`Profissional localizado no CNES (${localMatch.unitName})`);
       return;
     }
 
@@ -228,11 +174,10 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
     setCnesLookupFeedback(null);
 
     try {
-      const selectedUnit = units.find(u => u.id === participantUnitId) || units[0];
       const result = await lookupCnesProfessionalApi(cleanVal || rawValue, {
-        unitId: selectedUnit?.id,
-        unitName: selectedUnit?.name,
-        cnesCode: selectedUnit?.cnes,
+        unitId: userUnit.id,
+        unitName: userUnit.name,
+        cnesCode: userUnit.cnes,
         nameHint: participantName || (!cleanVal ? rawValue : undefined),
         categoryHint: category || undefined
       });
@@ -242,20 +187,6 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
         setParticipantName(result.name);
         setCategory(result.professionalCategory);
         setRegNumber(`CNS-${result.cns.slice(-6)}`);
-        if (result.unitId) {
-          setParticipantUnitId(result.unitId);
-          if (!declaredUnitIds.includes(result.unitId)) {
-            const updated = [...declaredUnitIds, result.unitId];
-            setDeclaredUnitIds(updated);
-            if (currentUser && onUpdateCurrentUser) {
-              onUpdateCurrentUser({
-                ...currentUser,
-                declaredUnitIds: updated,
-                declaredUnitNames: units.filter(u => updated.includes(u.id)).map(u => u.name)
-              });
-            }
-          }
-        }
         setCnesLookupFeedback(`Cadastro recuperado com sucesso do Cadastro Nacional CNES / DATASUS!`);
 
         // Save in global database
@@ -304,24 +235,13 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
 
     if (!targetAction) {
       if (otherUnitActionMatch) {
-        const confirmAdd = window.confirm(
-          `O PIN "${cleanPin}" pertence à capacitação "${otherUnitActionMatch.title}" ofertada pela unidade "${otherUnitActionMatch.unitName}".\n\nEssa unidade não consta na sua lista de unidades autodeclaradas no login (${declaredUnits.map(u => u.name).join(', ')}).\n\nDeseja adicionar "${otherUnitActionMatch.unitName}" às suas unidades declaradas e prosseguir com o check-in?`
+        alert(
+          `O PIN "${cleanPin}" pertence à capacitação "${otherUnitActionMatch.title}" ofertada pela unidade "${otherUnitActionMatch.unitName}".\n\nSua conta está vinculada à unidade "${userUnit.name}". As capacitações e certificações neste portal são exclusivas para a sua unidade de lotação.`
         );
-        if (confirmAdd) {
-          const updated = [...declaredUnitIds, otherUnitActionMatch.unitId];
-          setDeclaredUnitIds(updated);
-          if (currentUser && onUpdateCurrentUser) {
-            onUpdateCurrentUser({
-              ...currentUser,
-              declaredUnitIds: updated,
-              declaredUnitNames: units.filter(u => updated.includes(u.id)).map(u => u.name)
-            });
-          }
-        }
         return;
       }
 
-      alert(`PIN "${cleanPin}" inválido! Este código não corresponde a nenhuma ação educativa ativa ou cadastrada pela Coordenação NEPS de suas unidades de lotação autodeclaradas.`);
+      alert(`PIN "${cleanPin}" inválido! Este código não corresponde a nenhuma ação educativa ativa ou cadastrada pela Coordenação NEPS da sua unidade (${userUnit.name}).`);
       return;
     }
 
@@ -329,12 +249,6 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
       alert('Por favor preencha seu nome completo e CPF para emissão do certificado autenticado.');
       return;
     }
-
-    const declaredFirstUnit = declaredUnits[0];
-    const selectedUnit = units.find(u => u.id === participantUnitId) || 
-      units.find(u => u.id === currentUser?.unitId) || 
-      declaredFirstUnit || 
-      units[0];
 
     // Trigger celebration confetti
     try {
@@ -352,8 +266,6 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
     const effectiveName = participantName.trim() || currentUser?.name || 'Profissional SUS';
     const effectiveCpf = cpf.trim() || currentUser?.cpf || '';
     const effectiveReg = regNumber.trim() || currentUser?.registrationNumber || `SUS-${Math.floor(1000 + Math.random() * 9000)}`;
-    const effectiveUnitId = selectedUnit?.id || currentUser?.unitId || targetAction.unitId;
-    const effectiveUnitName = selectedUnit?.name || currentUser?.unitName || targetAction.unitName;
 
     const newRecordData: AttendanceRecord = {
       id: newRecordId,
@@ -369,8 +281,8 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
       cpf: effectiveCpf,
       registrationNumber: effectiveReg,
       professionalCategory: category,
-      participantUnitId: effectiveUnitId,
-      participantUnitName: effectiveUnitName,
+      participantUnitId: userUnit.id,
+      participantUnitName: userUnit.name,
       workloadHours: targetAction.workloadHours,
       date: targetAction.dateStart,
       checkinTimestamp: new Date().toISOString(),
@@ -397,8 +309,8 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
         name: effectiveName,
         cpf: effectiveCpf,
         registrationNumber: effectiveReg,
-        unitId: selectedUnit?.id || currentUser.unitId,
-        unitName: selectedUnit?.name || currentUser.unitName
+        unitId: userUnit.id,
+        unitName: userUnit.name
       });
     }
 
@@ -546,44 +458,35 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* AUTODECLARED UNITS BANNER & FILTER INDICATOR */}
+      {/* UNIT OF LOTAÇÃO BANNER */}
       <div className="bg-white border border-purple-200 rounded-xl p-3.5 sm:p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-linear-to-r from-purple-50/50 via-white to-blue-50/30">
         <div className="flex items-start sm:items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 border border-purple-200 shadow-2xs">
+          <div className="w-10 h-10 rounded-lg bg-purple-700 text-white flex items-center justify-center shrink-0 shadow-xs">
             <Building className="w-5 h-5" />
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900 bg-purple-100/90 px-2 py-0.5 rounded">
-                Unidades Autodeclaradas no Login
+                Unidade de Lotação do Usuário
               </span>
               <span className="text-xs text-slate-500 font-medium">
                 {unitOfferedActions.length} capacitações ofertadas
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              {declaredUnits.map(u => (
-                <span key={u.id} className="inline-flex items-center gap-1 bg-white border border-purple-300 text-purple-950 font-bold text-xs px-2.5 py-1 rounded-md shadow-2xs">
-                  <MapPin className="w-3 h-3 text-purple-600 shrink-0" />
-                  <span>{u.name}</span>
-                  <span className="text-[10px] text-purple-500 font-mono">({u.type})</span>
-                </span>
-              ))}
+            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+              <span className="inline-flex items-center gap-1.5 bg-white border border-purple-300 text-purple-950 font-bold text-xs px-3 py-1 rounded-lg shadow-2xs">
+                <MapPin className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <span>{userUnit.name}</span>
+                <span className="text-[10px] text-purple-600 font-mono">({userUnit.type} • CNES {userUnit.cnes})</span>
+              </span>
             </div>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setTempUnitIds(declaredUnitIds);
-            setShowUnitManager(true);
-          }}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
-        >
-          <Building className="w-3.5 h-3.5" />
-          <span>Alterar / Adicionar Unidades</span>
-        </button>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100/80 text-purple-900 rounded-lg text-xs font-semibold border border-purple-200">
+          <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+          <span>Lotação Vinculada ao Login e aos Certificados</span>
+        </div>
       </div>
 
       {/* HIGH DENSITY 4-COL KPI METRICS FOR PARTICIPANT PORTAL */}
@@ -624,7 +527,7 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
           </p>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-slate-900">{unitOfferedActions.length}</span>
-            <span className="text-xs text-purple-600 font-medium font-bold">Unidades Declaradas</span>
+            <span className="text-xs text-purple-600 font-medium font-bold">Unidade de Lotação</span>
           </div>
           <div className="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
             <div className="h-full bg-purple-600 w-[85%]"></div>
@@ -660,7 +563,7 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
               </div>
               <div>
                 <h3 className="font-bold text-sm text-slate-800">Registrar Presença na Ação (Auto-Check-in)</h3>
-                <p className="text-[11px] text-slate-400">Validação instantânea com PIN de 4 dígitos das unidades autodeclaradas</p>
+                <p className="text-[11px] text-slate-400">Validação instantânea com PIN de 4 dígitos da unidade de lotação ({userUnit.name})</p>
               </div>
             </div>
             <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
@@ -685,7 +588,7 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                   Código PIN Oficial da Ação <span className="text-red-500">*</span>
                 </label>
                 <span className="text-[10px] text-slate-500 font-medium">
-                  Gerado pela Coordenação NEPS
+                  Gerado pela Coordenação NEPS de {userUnit.name}
                 </span>
               </div>
 
@@ -726,43 +629,24 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                     </div>
                   ) : otherUnitActionMatch ? (
                     <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-lg text-amber-900 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-[11px] flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                          Ação de outra unidade ({otherUnitActionMatch.unitName})
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = [...declaredUnitIds, otherUnitActionMatch.unitId];
-                            setDeclaredUnitIds(updated);
-                            if (currentUser && onUpdateCurrentUser) {
-                              onUpdateCurrentUser({
-                                ...currentUser,
-                                declaredUnitIds: updated,
-                                declaredUnitNames: units.filter(u => updated.includes(u.id)).map(u => u.name)
-                              });
-                            }
-                          }}
-                          className="text-[10px] font-bold text-amber-800 bg-amber-200/80 hover:bg-amber-300 px-2 py-0.5 rounded cursor-pointer transition"
-                        >
-                          + Adicionar Unidade
-                        </button>
+                      <div className="flex items-center gap-1 font-bold text-[11px]">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Ação exclusiva de outra unidade ({otherUnitActionMatch.unitName})</span>
                       </div>
-                      <p className="text-[10px] text-amber-800 truncate">
-                        "{otherUnitActionMatch.title}" — Adicione a unidade acima para liberar o check-in.
+                      <p className="text-[10px] text-amber-800">
+                        "{otherUnitActionMatch.title}" — Este PIN é exclusivo para profissionais lotados em {otherUnitActionMatch.unitName}.
                       </p>
                     </div>
                   ) : pin.trim().length === 4 ? (
                     <div className="flex items-center gap-1.5 text-rose-800 font-medium bg-rose-100/70 border border-rose-300 px-3 py-2 rounded-lg animate-in fade-in">
                       <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                       <span className="text-[11px]">
-                        PIN não localizado nas unidades autodeclaradas.
+                        PIN não localizado entre as ações ativas da unidade {userUnit.name}.
                       </span>
                     </div>
                   ) : (
                     <p className="text-slate-500 text-[11px] leading-relaxed">
-                      Digite os <strong>4 dígitos numéricos</strong> informados no treinamento da sua unidade.
+                      Digite os <strong>4 dígitos numéricos</strong> informados no treinamento da unidade {userUnit.name}.
                     </p>
                   )}
                 </div>
@@ -770,9 +654,9 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
 
               {/* Quick helper for active unit actions */}
               <div className="mt-3 pt-2.5 border-t border-slate-200/80 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-600">
-                <span className="text-slate-400 font-medium text-[10px]">Ações com PIN ativo em suas unidades:</span>
+                <span className="text-slate-400 font-medium text-[10px]">Ações com PIN ativo em {userUnit.name}:</span>
                 {activeTrainings.length === 0 ? (
-                  <span className="text-[10px] text-slate-400 italic">Nenhum PIN ativo no momento para as unidades selecionadas.</span>
+                  <span className="text-[10px] text-slate-400 italic">Nenhum PIN ativo no momento para a sua unidade de lotação.</span>
                 ) : (
                   activeTrainings.slice(0, 4).map((a) => (
                     <button
@@ -831,7 +715,6 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                         setParticipantName(match.name);
                         setCategory(match.professionalCategory);
                         setRegNumber(match.councilRegistration || `CNS-${match.cns.slice(-6)}`);
-                        setParticipantUnitId(match.unitId);
                         setCnesLookupFeedback(null);
                       } else if (cleanVal.length === 11) {
                         // Auto-lookup online if 11 digits complete
@@ -920,21 +803,28 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                 </div>
               )}
 
+              {/* LOCKED / BOUND UNIT OF LOTAÇÃO (CANNOT BE CHANGED ARBITRARILY TO DESYNC FROM LOGIN) */}
               <div className="sm:col-span-2">
-                <label className="block text-slate-700 font-semibold mb-1">
-                  Sua Unidade de Lotação / Atuação
+                <label className="block text-slate-700 font-semibold mb-1 text-xs">
+                  Sua Unidade de Lotação / Vínculo Institucional
                 </label>
-                <select
-                  value={participantUnitId}
-                  onChange={(e) => setParticipantUnitId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                >
-                  {units.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.type})
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full bg-purple-50/70 border border-purple-200 rounded-lg p-2.5 flex items-center justify-between text-xs text-purple-950 shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-purple-700 text-white flex items-center justify-center shrink-0">
+                      <Building className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900">{userUnit.name}</p>
+                      <p className="text-[10px] text-purple-700">
+                        CNES: <span className="font-mono font-semibold">{userUnit.cnes}</span> • Tipo: {userUnit.type} • Definida no Login
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold bg-purple-200 text-purple-900 px-2.5 py-1 rounded-md border border-purple-300 shrink-0 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+                    Lotação Vinculada
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1099,14 +989,14 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                 <GraduationCap className="w-4 h-4" />
               </div>
               <h3 className="font-bold text-base text-slate-900 tracking-tight">
-                Cursos Ofertados por suas Unidades Autodeclaradas
+                Cursos Ofertados por sua Unidade de Lotação
               </h3>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-full">
                 {unitOfferedActions.length} ações disponíveis
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              Cursos e treinamentos cadastrados pelo NEPS para: <strong className="text-slate-800">{declaredUnits.map(u => u.name).join(', ')}</strong>.
+              Cursos e treinamentos cadastrados pelo NEPS para: <strong className="text-slate-800">{userUnit.name}</strong>.
             </p>
           </div>
 
@@ -1363,106 +1253,6 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
         )}
 
       </div>
-
-      {/* MODAL: MANAGE AUTODECLARED HEALTH UNITS */}
-      {showUnitManager && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center">
-                  <Building className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-slate-900">Unidades de Lotação Autodeclaradas</h3>
-                  <p className="text-xs text-slate-500">Selecione onde você atua na rede pública</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowUnitManager(false)}
-                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="py-4 overflow-y-auto flex-1 space-y-3">
-              <p className="text-xs text-slate-600">
-                O portal exibirá <strong>exclusivamente</strong> os cursos e treinamentos ofertados pelas unidades que você marcar abaixo:
-              </p>
-
-              <div className="space-y-2">
-                {units.map((u) => {
-                  const isChecked = tempUnitIds.includes(u.id);
-                  const coursesCount = actions.filter(a => a.unitId === u.id).length;
-                  return (
-                    <div
-                      key={u.id}
-                      onClick={() => {
-                        if (isChecked) {
-                          if (tempUnitIds.length === 1) {
-                            alert('Você deve manter pelo menos uma unidade selecionada.');
-                            return;
-                          }
-                          setTempUnitIds(tempUnitIds.filter(id => id !== u.id));
-                        } else {
-                          setTempUnitIds([...tempUnitIds, u.id]);
-                        }
-                      }}
-                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition select-none ${
-                        isChecked
-                          ? 'border-purple-500 bg-purple-50/40 shadow-2xs'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded flex items-center justify-center border transition ${
-                          isChecked ? 'bg-purple-700 border-purple-700 text-white' : 'border-slate-300 bg-white'
-                        }`}>
-                          {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-900">{u.name}</p>
-                          <p className="text-[10px] text-slate-500">
-                            Tipo: <strong className="uppercase">{u.type}</strong> • CNES: <span className="font-mono">{u.cnes}</span> • Bairro: {u.neighborhood || 'Recife'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <span className="text-[10px] font-bold text-purple-800 bg-purple-100/70 border border-purple-200 px-2 py-0.5 rounded-full shrink-0">
-                        {coursesCount} {coursesCount === 1 ? 'curso' : 'cursos'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
-              <span className="text-xs text-slate-500">
-                <strong>{tempUnitIds.length}</strong> {tempUnitIds.length === 1 ? 'unidade selecionada' : 'unidades selecionadas'}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowUnitManager(false)}
-                  className="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSaveDeclaredUnits(tempUnitIds)}
-                  className="px-4 py-2 text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-lg shadow-2xs transition cursor-pointer"
-                >
-                  Salvar Preferências
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

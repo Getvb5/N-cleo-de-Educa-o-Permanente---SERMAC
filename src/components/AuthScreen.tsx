@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { HealthUnit, AuthUser, UserRole } from '../types';
 import { SermacEducaLogo } from './SermacEducaLogo';
+import { RecifeBackground } from './RecifeBackground';
 import { 
   isCentralSermacEmailAuthorized,
   isCentralSermacPasscodeValid,
@@ -42,8 +43,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   // State for Unit selections
   const [selectedUnitId, setSelectedUnitId] = useState<string>(units[0]?.id || 'unit-159');
   const [participantUnitId, setParticipantUnitId] = useState<string>(units[0]?.id || 'unit-159');
-  const [participantUnitIds, setParticipantUnitIds] = useState<string[]>([units[0]?.id || 'unit-159']);
-  const [showMultiUnitSelect, setShowMultiUnitSelect] = useState<boolean>(false);
   
   // Institutional Account inputs per profile
   // 1. Central SERMAC (strict controlled access)
@@ -197,12 +196,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       return;
     }
 
-    // Determine all autodeclared units
-    const effectiveUnitIds = Array.from(new Set(
-      participantUnitIds.length > 0 ? participantUnitIds : [participantUnitId]
-    ));
-    const effectiveUnitsList = units.filter(u => effectiveUnitIds.includes(u.id));
-    const primaryUnit = effectiveUnitsList.find(u => u.id === (targetUnitId || participantUnitId)) || effectiveUnitsList[0] || units[0];
+    // Determine unit of lotação
+    const selectedUnit = units.find(u => u.id === (targetUnitId || participantUnitId)) || units[0];
     const displayName = partName.trim() || 'Profissional de Saúde SUS';
     
     const partUser: AuthUser = {
@@ -210,15 +205,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
       name: displayName,
       email: cleanEmail,
       registrationNumber: 'SUS-PE-2026',
-      unitId: primaryUnit.id,
-      unitName: primaryUnit.name,
-      declaredUnitIds: effectiveUnitsList.map(u => u.id),
-      declaredUnitNames: effectiveUnitsList.map(u => u.name),
+      unitId: selectedUnit.id,
+      unitName: selectedUnit.name,
+      declaredUnitIds: [selectedUnit.id],
+      declaredUnitNames: [selectedUnit.name],
       avatarInitials: displayName.substring(0, 2).toUpperCase(),
       authProvider: 'institutional'
     };
 
-    onLoginSuccess(partUser, primaryUnit.id);
+    onLoginSuccess(partUser, selectedUnit.id);
   };
 
   // Update NEPS coordinator selection when unit changes
@@ -229,10 +224,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   const currentSelectedUnit = units.find(u => u.id === selectedUnitId) || units[0];
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col justify-between text-slate-800 font-sans selection:bg-[#1351B4] selection:text-white">
+    <RecifeBackground>
       
       {/* Top Header - Institutional Gov.br / SUS */}
-      <header className="w-full bg-[#0C326F] text-white px-4 sm:px-6 py-4 border-b-4 border-[#1351B4] shadow-sm">
+      <header className="w-full bg-[#00058a]/60 backdrop-blur-md text-white px-4 sm:px-6 py-4 border-b border-white/15 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
@@ -240,7 +235,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold tracking-tight text-white">
-                  SERMAC <span className="text-blue-200">EDUCA</span>
+                  SERMAC <span className="text-cyan-300">EDUCA</span>
                 </h1>
                 <span className="text-[11px] bg-white/20 text-white font-bold px-2 py-0.5 rounded">
                   PNEPS / SUS
@@ -253,8 +248,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 text-white text-xs font-semibold border border-white/20">
-              <ShieldCheck className="w-4 h-4 text-blue-200" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-semibold border border-white/25 backdrop-blur-xs">
+              <ShieldCheck className="w-4 h-4 text-cyan-300" />
               <span>Acesso Institucional Seguro</span>
             </span>
           </div>
@@ -267,16 +262,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
         
         {/* Title & Guidance Banner */}
         <div className="text-center max-w-3xl mx-auto mb-6 space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#EBF2FC] border border-[#1351B4]/30 text-[#0C326F] text-xs font-bold mb-1">
-            <Building2 className="w-4 h-4 text-[#1351B4]" />
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/30 text-cyan-200 text-xs font-bold mb-1 shadow-sm">
+            <Building2 className="w-4 h-4 text-cyan-300" />
             Autenticação Institucional • Rede Municipal de Saúde
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#0C326F] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-sm">
             Portal de Acesso aos Perfis do Sistema
           </h2>
-          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          <p className="text-xs sm:text-sm text-blue-100 leading-relaxed font-medium">
             Selecione seu perfil de atuação abaixo para acessar o sistema. 
-            <strong className="text-[#0C326F] ml-1">O controle estrito de acesso é aplicado exclusivamente à Gestão Central SERMAC</strong>.
+            <strong className="text-white ml-1 font-bold">O controle estrito de acesso é aplicado exclusivamente à Gestão Central SERMAC</strong>.
           </p>
         </div>
 
@@ -324,7 +319,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           {/* ============================================================ */}
           {/* PILLAR 1: GESTÃO CENTRAL - SERMAC (STRICT CONTROLLED ACCESS) */}
           {/* ============================================================ */}
-          <div className="bg-white border-2 border-[#1351B4] rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
+          <div className="bg-white/95 backdrop-blur-md border-2 border-[#1351B4] rounded-2xl p-5 flex flex-col justify-between shadow-2xl relative overflow-hidden transition hover:-translate-y-1">
             
             <div className="absolute top-0 right-0 bg-[#1351B4] text-white px-3 py-1 text-[10px] font-bold uppercase rounded-bl-lg tracking-wider flex items-center gap-1">
               <Lock className="w-3 h-3" />
@@ -449,7 +444,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           {/* ============================================================ */}
           {/* PILLAR 2: NÚCLEOS NEPS - UNIDADE                             */}
           {/* ============================================================ */}
-          <div className="bg-white border-2 border-emerald-600 rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
+          <div className="bg-white/95 backdrop-blur-md border-2 border-emerald-600 rounded-2xl p-5 flex flex-col justify-between shadow-2xl relative overflow-hidden transition hover:-translate-y-1">
             
             <div className="absolute top-0 right-0 bg-emerald-700 text-white px-3 py-1 text-[10px] font-bold uppercase rounded-bl-lg tracking-wider flex items-center gap-1">
               <Lock className="w-3 h-3" />
@@ -556,7 +551,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
           {/* ============================================================ */}
           {/* PILLAR 3: PORTAL DO PARTICIPANTE                             */}
           {/* ============================================================ */}
-          <div className="bg-white border-2 border-purple-600 rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
+          <div className="bg-white/95 backdrop-blur-md border-2 border-purple-600 rounded-2xl p-5 flex flex-col justify-between shadow-2xl relative overflow-hidden transition hover:-translate-y-1">
             
             <div className="absolute top-0 right-0 bg-purple-700 text-white px-3 py-1 text-[10px] font-bold uppercase rounded-bl-lg tracking-wider flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" />
@@ -585,75 +580,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
               {/* Form: Participant info */}
               <div className="mt-4 p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2.5">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-bold text-slate-700">
-                      Unidade de Lotação Autodeclarada *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowMultiUnitSelect(!showMultiUnitSelect)}
-                      className="text-[10px] text-purple-700 font-semibold hover:underline"
-                    >
-                      {showMultiUnitSelect ? 'Modo simples' : '+ Mais de 1 unidade?'}
-                    </button>
-                  </div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Sua Unidade de Lotação / Atuação no SUS *
+                  </label>
 
-                  {!showMultiUnitSelect ? (
-                    <select
-                      value={participantUnitId}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setParticipantUnitId(val);
-                        setParticipantUnitIds([val]);
-                      }}
-                      className="w-full bg-white border border-slate-300 rounded px-2.5 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-purple-600 cursor-pointer shadow-2xs"
-                    >
-                      {units.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({u.type})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="space-y-1.5 bg-white border border-purple-200 rounded-lg p-2 max-h-36 overflow-y-auto">
-                      <p className="text-[10px] text-slate-500 font-medium">
-                        Selecione as unidades do SUS onde você atua:
-                      </p>
-                      {units.map((u) => {
-                        const isChecked = participantUnitIds.includes(u.id);
-                        return (
-                          <label
-                            key={u.id}
-                            className={`flex items-center gap-2 p-1.5 rounded text-[11px] cursor-pointer transition ${
-                              isChecked ? 'bg-purple-50 text-purple-900 font-bold' : 'text-slate-700 hover:bg-slate-50'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  const updated = [...participantUnitIds, u.id];
-                                  setParticipantUnitIds(updated);
-                                  if (!participantUnitId) setParticipantUnitId(u.id);
-                                } else {
-                                  if (participantUnitIds.length > 1) {
-                                    const updated = participantUnitIds.filter(id => id !== u.id);
-                                    setParticipantUnitIds(updated);
-                                    if (participantUnitId === u.id) setParticipantUnitId(updated[0]);
-                                  }
-                                }
-                              }}
-                              className="rounded text-purple-600 focus:ring-purple-500"
-                            />
-                            <span>{u.name} ({u.type})</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <select
+                    value={participantUnitId}
+                    onChange={(e) => setParticipantUnitId(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded px-2.5 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-purple-600 cursor-pointer shadow-2xs"
+                  >
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.type})
+                      </option>
+                    ))}
+                  </select>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    🎯 O portal retornará apenas os cursos ofertados por sua(s) unidade(s) selecionada(s).
+                    🎯 Os cursos disponíveis e sua certificação oficial serão emitidos e vinculados a esta unidade.
                   </p>
                 </div>
 
@@ -718,28 +661,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
 
         </div>
 
-        {/* SECURITY & RBAC ADVISORY */}
-        <div className="max-w-4xl mx-auto w-full mt-8 p-4 bg-white border border-slate-300 rounded-lg flex items-center gap-3 text-xs text-slate-600 shadow-xs">
-          <ShieldCheck className="w-6 h-6 text-emerald-700 shrink-0" />
-          <div className="space-y-0.5">
-            <strong className="text-slate-900 font-bold block">Controle de Acesso por Papéis (RBAC) e Segurança Institucional</strong>
-            <p className="text-[11px] text-slate-600">
-              O acesso aos perfis de <strong className="text-[#0C326F]">Gestão Central SERMAC</strong> e <strong className="text-emerald-700">Coordenação NEPS Unidade</strong> é restrito e exige e-mails funcionais previamente homologados na SMS Recife. O <strong className="text-purple-700">Portal do Participante</strong> é aberto aos profissionais e estagiários do SUS para validação de frequência, avaliações de reação e emissão de certificados.
-            </p>
-          </div>
-        </div>
-
       </main>
 
       {/* Footer */}
-      <footer className="w-full text-center py-4 border-t border-slate-300 bg-white text-[11px] text-slate-600">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="w-full text-center py-3 border-t border-white/10 bg-[#000366]/60 backdrop-blur-md text-[11px] text-blue-200">
+        <div className="max-w-7xl mx-auto px-4 text-center">
           <span>Prefeitura da Cidade do Recife • Secretaria de Saúde • Secretaria de Média e Alta Complexidade</span>
-          <span className="text-[#0C326F] font-bold">PNEPS • SUS Recife</span>
         </div>
       </footer>
 
-    </div>
+    </RecifeBackground>
   );
 };
 
