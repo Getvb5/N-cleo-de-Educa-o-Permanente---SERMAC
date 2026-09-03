@@ -134,7 +134,6 @@ export type ThematicAxis =
 export type Modality = 'Presencial' | 'Híbrido' | 'EAD / Online';
 
 export type ActiveMethodology =
-  | 'Palestra'
   | 'Oficina Prática / Hands-on'
   | 'Simulação Realística / Cenário Clínico'
   | 'Roda de Conversa / Problematização (Arco de Maguerez)'
@@ -142,6 +141,7 @@ export type ActiveMethodology =
   | 'Exposição Dialogada com Dinâmica de Grupo'
   | 'Instrução no Posto de Trabalho (In Loco)'
   | 'Webinar com Fórum de Debates'
+  | 'Outros'
   | 'Outro';
 
 export type ActionStatus = 'planejada' | 'em_andamento' | 'concluida' | 'cancelada';

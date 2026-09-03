@@ -6,10 +6,12 @@ import {
   signOut as firebaseSignOut,
   User as FirebaseUser 
 } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(default)');
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('openid');

@@ -608,7 +608,6 @@ export const ALL_THEMATIC_AXES: ThematicAxis[] = [
 ];
 
 export const ALL_METHODOLOGIES: ActiveMethodology[] = [
-  'Palestra',
   'Oficina Prática / Hands-on',
   'Simulação Realística / Cenário Clínico',
   'Roda de Conversa / Problematização (Arco de Maguerez)',
@@ -616,7 +615,7 @@ export const ALL_METHODOLOGIES: ActiveMethodology[] = [
   'Exposição Dialogada com Dinâmica de Grupo',
   'Instrução no Posto de Trabalho (In Loco)',
   'Webinar com Fórum de Debates',
-  'Outro'
+  'Outros'
 ];
 
 export const ALL_MODALITIES: Modality[] = [

@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   UserRole, 
   HealthUnit, 
   TrainingAction, 
   AttendanceRecord, 
-  TrainingNeedDNC,
-  UnitStaffCensus,
-  FeedbackData,
-  AuthUser,
+  TrainingNeedDNC, 
+  UnitStaffCensus, 
+  FeedbackData, 
+  AuthUser, 
   CnesProfessional 
 } from './types';
 import { 
@@ -23,11 +23,24 @@ import {
   saveStoredCensus,
   loadStoredUser,
   saveStoredUser,
-  INITIAL_HEALTH_UNITS,
-  DEFAULT_SERMAC_USER,
-  DEFAULT_NEPS_USERS,
-  DEFAULT_PARTICIPANT_USER
+  INITIAL_HEALTH_UNITS
 } from './data/mockData';
+import { 
+  subscribeHealthUnits,
+  subscribeTrainingActions,
+  subscribeAttendanceRecords,
+  subscribeLntNeeds,
+  subscribeUnitCensus,
+  saveHealthUnitToCloud,
+  saveTrainingActionToCloud,
+  deleteTrainingActionFromCloud,
+  saveAttendanceRecordToCloud,
+  saveLntNeedToCloud,
+  updateLntStatusInCloud,
+  deleteLntNeedFromCloud,
+  saveCensusRecordToCloud,
+  seedCloudDatabaseIfEmpty
+} from './lib/firestoreService';
 import { generateMockCnesDatabase } from './data/cnesDatabase';
 import { Sidebar, Header } from './components/Navbar';
 import { CentralSermacDashboard } from './components/CentralSermacDashboard';
@@ -54,7 +67,7 @@ export default function App() {
   const [units, setUnits] = useState<HealthUnit[]>(() => getStoredHealthUnits());
   const [selectedUnitId, setSelectedUnitId] = useState<string>(() => initialUser?.unitId || units[0]?.id || 'unit-1');
 
-  // Core Data State
+  // Core Data State (Loaded locally & synchronized live with Cloud Firestore)
   const [actions, setActions] = useState<TrainingAction[]>(() => getStoredTrainingActions());
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => getStoredAttendance());
   const [dncList, setDncList] = useState<TrainingNeedDNC[]>(() => getStoredDNC());
@@ -92,16 +105,83 @@ export default function App() {
   const [isCnesModalOpen, setIsCnesModalOpen] = useState(false);
   const [cnesTargetUnitId, setCnesTargetUnitId] = useState<string | undefined>(undefined);
 
-  // Sync to LocalStorage on changes
+  const initialCloudSyncDone = useRef(false);
+
+  // ----------------------------------------------------
+  // Cloud Firestore Real-Time Subscriptions & Initialization
+  // ----------------------------------------------------
+  useEffect(() => {
+    let unsubscribeUnits: () => void = () => {};
+    let unsubscribeActions: () => void = () => {};
+    let unsubscribeAttendance: () => void = () => {};
+    let unsubscribeLnt: () => void = () => {};
+    let unsubscribeCensus: () => void = () => {};
+
+    const initCloud = async () => {
+      try {
+        if (!initialCloudSyncDone.current) {
+          initialCloudSyncDone.current = true;
+          await seedCloudDatabaseIfEmpty(
+            getStoredHealthUnits(),
+            getStoredTrainingActions(),
+            getStoredAttendance(),
+            getStoredDNC(),
+            loadStoredCensus()
+          );
+        }
+
+        unsubscribeUnits = subscribeHealthUnits((cloudUnits) => {
+          if (cloudUnits && cloudUnits.length > 0) {
+            setUnits(cloudUnits);
+          }
+        });
+
+        unsubscribeActions = subscribeTrainingActions((cloudActions) => {
+          if (cloudActions) {
+            setActions(cloudActions);
+          }
+        });
+
+        unsubscribeAttendance = subscribeAttendanceRecords((cloudAttendance) => {
+          if (cloudAttendance) {
+            setAttendance(cloudAttendance);
+          }
+        });
+
+        unsubscribeLnt = subscribeLntNeeds((cloudLnt) => {
+          if (cloudLnt) {
+            setDncList(cloudLnt);
+          }
+        });
+
+        unsubscribeCensus = subscribeUnitCensus((cloudCensus) => {
+          if (cloudCensus) {
+            setCensusList(cloudCensus);
+          }
+        });
+      } catch (err) {
+        console.warn('Firestore cloud sync connection notice:', err);
+      }
+    };
+
+    initCloud();
+
+    return () => {
+      unsubscribeUnits();
+      unsubscribeActions();
+      unsubscribeAttendance();
+      unsubscribeLnt();
+      unsubscribeCensus();
+    };
+  }, []);
+
+  // Sync to LocalStorage as resilient cache
   useEffect(() => {
     try {
       localStorage.setItem('eps_cnes_professionals_v4', JSON.stringify(cnesProfessionals));
-    } catch (e) {
-      // quota or private mode
-    }
+    } catch (e) {}
   }, [cnesProfessionals]);
 
-  // Sync to LocalStorage on changes
   useEffect(() => {
     saveStoredTrainingActions(actions);
   }, [actions]);
@@ -152,15 +232,24 @@ export default function App() {
   // Selected Unit object
   const currentUnit = units.find(u => u.id === selectedUnitId) || units[0];
 
-  // Handlers
+  // ----------------------------------------------------
+  // Handlers with Cloud Firestore Persistence
+  // ----------------------------------------------------
   const handleSaveAction = (savedAction: TrainingAction) => {
     setActions(prev => {
       const exists = prev.some(a => a.id === savedAction.id);
-      if (exists) {
-        return prev.map(a => a.id === savedAction.id ? savedAction : a);
-      }
-      return [savedAction, ...prev];
+      const updated = exists 
+        ? prev.map(a => a.id === savedAction.id ? savedAction : a)
+        : [savedAction, ...prev];
+      saveStoredTrainingActions(updated);
+      return updated;
     });
+
+    // Persist to Cloud Firestore
+    saveTrainingActionToCloud(savedAction).catch(err => {
+      console.error('Error syncing saved action to Firestore:', err);
+    });
+
     setIsNewActionOpen(false);
     setActionToEdit(null);
     if (selectedActionDetails && selectedActionDetails.id === savedAction.id) {
@@ -179,12 +268,24 @@ export default function App() {
     if (selectedActionDetails && selectedActionDetails.id === actionId) {
       setSelectedActionDetails(null);
     }
+    // Delete from Cloud Firestore
+    deleteTrainingActionFromCloud(actionId).catch(err => {
+      console.error('Error deleting action from Firestore:', err);
+    });
   };
 
   const handleUpdateActionStatus = (actionId: string, newStatus: TrainingAction['status']) => {
-    setActions(prev => prev.map(a => a.id === actionId ? { ...a, status: newStatus } : a));
-    if (selectedActionDetails && selectedActionDetails.id === actionId) {
-      setSelectedActionDetails(prev => prev ? { ...prev, status: newStatus } : null);
+    const targetAction = actions.find(a => a.id === actionId);
+    if (targetAction) {
+      const updatedAction = { ...targetAction, status: newStatus };
+      setActions(prev => prev.map(a => a.id === actionId ? updatedAction : a));
+      if (selectedActionDetails && selectedActionDetails.id === actionId) {
+        setSelectedActionDetails(updatedAction);
+      }
+      // Save status to Cloud Firestore
+      saveTrainingActionToCloud(updatedAction).catch(err => {
+        console.error('Error updating action status in Firestore:', err);
+      });
     }
   };
 
@@ -193,32 +294,31 @@ export default function App() {
     reason: string, 
     category: 'Logística / Local' | 'Instrutor Indisponível' | 'Emergência Epidemiológica' | 'Baixa Adesão Prévia' | 'Outro'
   ) => {
-    setActions(prev => prev.map(a => {
-      if (a.id === actionId) {
-        return {
-          ...a,
-          status: 'cancelada',
-          cancellationReason: reason,
-          cancellationCategory: category,
-          cancellationDate: new Date().toISOString().split('T')[0]
-        };
-      }
-      return a;
-    }));
-    setSelectedActionToCancel(null);
-    if (selectedActionDetails && selectedActionDetails.id === actionId) {
-      setSelectedActionDetails(prev => prev ? { 
-        ...prev, 
+    const targetAction = actions.find(a => a.id === actionId);
+    if (targetAction) {
+      const updatedAction: TrainingAction = {
+        ...targetAction,
         status: 'cancelada',
         cancellationReason: reason,
         cancellationCategory: category,
         cancellationDate: new Date().toISOString().split('T')[0]
-      } : null);
+      };
+
+      setActions(prev => prev.map(a => a.id === actionId ? updatedAction : a));
+      setSelectedActionToCancel(null);
+      if (selectedActionDetails && selectedActionDetails.id === actionId) {
+        setSelectedActionDetails(updatedAction);
+      }
+
+      // Save to Cloud Firestore
+      saveTrainingActionToCloud(updatedAction).catch(err => {
+        console.error('Error saving canceled action to Firestore:', err);
+      });
     }
   };
 
   const handleSaveCensus = (newCensus: UnitStaffCensus) => {
-    // Update or add census
+    // Update or add census locally
     setCensusList(prev => {
       const idx = prev.findIndex(c => c.unitId === newCensus.unitId);
       if (idx >= 0) {
@@ -230,16 +330,28 @@ export default function App() {
     });
 
     // Also update health unit totalStaff and activeStaffBreakdown
+    let updatedUnitObj: HealthUnit | undefined;
     setUnits(prev => prev.map(u => {
       if (u.id === newCensus.unitId) {
-        return {
+        updatedUnitObj = {
           ...u,
           totalStaff: newCensus.totalActiveStaff,
           activeStaffBreakdown: newCensus.breakdown
         };
+        return updatedUnitObj;
       }
       return u;
     }));
+
+    // Persist to Cloud Firestore
+    saveCensusRecordToCloud(newCensus).catch(err => {
+      console.error('Error saving census to Firestore:', err);
+    });
+    if (updatedUnitObj) {
+      saveHealthUnitToCloud(updatedUnitObj).catch(err => {
+        console.error('Error saving updated unit to Firestore:', err);
+      });
+    }
 
     setSelectedCensusUnit(null);
   };
@@ -261,17 +373,14 @@ export default function App() {
     // 3. Update HealthUnit object
     const targetUnit = units.find(u => u.id === unitId);
     if (targetUnit) {
-      setUnits(prev => prev.map(u => {
-        if (u.id === unitId) {
-          return {
-            ...u,
-            totalStaff: totalActive || u.totalStaff,
-            activeStaffBreakdown: Object.keys(breakdown).length > 0 ? breakdown : u.activeStaffBreakdown,
-            cnesSyncedAt: new Date().toISOString()
-          };
-        }
-        return u;
-      }));
+      const updatedUnit: HealthUnit = {
+        ...targetUnit,
+        totalStaff: totalActive || targetUnit.totalStaff,
+        activeStaffBreakdown: Object.keys(breakdown).length > 0 ? breakdown : targetUnit.activeStaffBreakdown,
+        cnesSyncedAt: new Date().toISOString()
+      };
+
+      setUnits(prev => prev.map(u => u.id === unitId ? updatedUnit : u));
 
       // 4. Update or create Census Record
       const newCensus: UnitStaffCensus = {
@@ -296,6 +405,10 @@ export default function App() {
         }
         return [...prev, newCensus];
       });
+
+      // Persist unit and census to Cloud Firestore
+      saveHealthUnitToCloud(updatedUnit).catch(err => console.error('Firestore unit sync error:', err));
+      saveCensusRecordToCloud(newCensus).catch(err => console.error('Firestore census sync error:', err));
     }
   };
 
@@ -306,20 +419,18 @@ export default function App() {
     const unitId = newProf.unitId;
     const targetUnit = units.find(u => u.id === unitId);
     if (targetUnit) {
-      setUnits(prev => prev.map(u => {
-        if (u.id === unitId) {
-          const breakdown = { ...(u.activeStaffBreakdown || {}) };
-          breakdown[newProf.professionalCategory] = (breakdown[newProf.professionalCategory] || 0) + 1;
-          const totalStaff = Object.values(breakdown).reduce<number>((acc, v) => acc + (Number(v) || 0), 0);
-          return {
-            ...u,
-            totalStaff: totalStaff || u.totalStaff + 1,
-            activeStaffBreakdown: breakdown,
-            cnesSyncedAt: new Date().toISOString()
-          };
-        }
-        return u;
-      }));
+      const breakdown = { ...(targetUnit.activeStaffBreakdown || {}) };
+      breakdown[newProf.professionalCategory] = (breakdown[newProf.professionalCategory] || 0) + 1;
+      const totalStaff = Object.values(breakdown).reduce<number>((acc, v) => acc + (Number(v) || 0), 0);
+      const updatedUnit: HealthUnit = {
+        ...targetUnit,
+        totalStaff: totalStaff || targetUnit.totalStaff + 1,
+        activeStaffBreakdown: breakdown,
+        cnesSyncedAt: new Date().toISOString()
+      };
+
+      setUnits(prev => prev.map(u => u.id === unitId ? updatedUnit : u));
+      saveHealthUnitToCloud(updatedUnit).catch(err => console.error('Firestore unit save error:', err));
     }
   };
 
@@ -350,23 +461,36 @@ export default function App() {
       return [newRecord, ...prev];
     });
 
+    // Save attendance to Cloud Firestore
+    saveAttendanceRecordToCloud(newRecord).catch(err => {
+      console.error('Error saving attendance to Firestore:', err);
+    });
+
     // Increment attended count on action
     setActions(prev => prev.map(a => {
       if (a.id === recordData.actionId) {
         const count = (a.attendedCount || 0) + 1;
-        return { ...a, attendedCount: count };
+        const updatedAction = { ...a, attendedCount: count };
+        // Save action updated count to Cloud Firestore
+        saveTrainingActionToCloud(updatedAction).catch(err => console.error('Firestore action attended update error:', err));
+        return updatedAction;
       }
       return a;
     }));
   };
 
   const handleSaveFeedback = (attendanceId: string, feedback: FeedbackData) => {
-    setAttendance(prev => prev.map(a => {
-      if (a.id === attendanceId) {
-        return { ...a, feedback };
-      }
-      return a;
-    }));
+    setAttendance(prev => {
+      const updatedList = prev.map(a => {
+        if (a.id === attendanceId) {
+          const updated = { ...a, feedback };
+          saveAttendanceRecordToCloud(updated).catch(err => console.error('Firestore feedback save error:', err));
+          return updated;
+        }
+        return a;
+      });
+      return updatedList;
+    });
   };
 
   const handleSubmitDNC = (dncData: Omit<TrainingNeedDNC, 'id' | 'dateReported' | 'status'>) => {
@@ -377,6 +501,7 @@ export default function App() {
       status: 'Pendente'
     };
     setDncList(prev => [newDnc, ...prev]);
+    saveLntNeedToCloud(newDnc).catch(err => console.error('Firestore LNT submit error:', err));
   };
 
   const handleAddLntNeed = (newLntData: Omit<TrainingNeedDNC, 'id' | 'dateReported'>) => {
@@ -387,14 +512,17 @@ export default function App() {
       status: newLntData.status || 'Aprovado_LNT'
     };
     setDncList(prev => [newDnc, ...prev]);
+    saveLntNeedToCloud(newDnc).catch(err => console.error('Firestore LNT add error:', err));
   };
 
   const handleDeleteDnc = (dncId: string) => {
     setDncList(prev => prev.filter(d => d.id !== dncId));
+    deleteLntNeedFromCloud(dncId).catch(err => console.error('Firestore LNT delete error:', err));
   };
 
   const handleUpdateDncStatus = (dncId: string, status: TrainingNeedDNC['status']) => {
     setDncList(prev => prev.map(d => d.id === dncId ? { ...d, status } : d));
+    updateLntStatusInCloud(dncId, status).catch(err => console.error('Firestore LNT status update error:', err));
   };
 
   const handleGlobalExportCSV = () => {

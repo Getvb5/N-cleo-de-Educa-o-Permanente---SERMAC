@@ -226,7 +226,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
   return (
     <RecifeBackground>
       
-      {/* Top Header - Institutional Gov.br / SUS */}
+      {/* Top Header - Institutional */}
       <header className="w-full bg-[#00058a]/60 backdrop-blur-md text-white px-4 sm:px-6 py-4 border-b border-white/15 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           
@@ -237,21 +237,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess })
                 <h1 className="text-xl font-bold tracking-tight text-white">
                   SERMAC <span className="text-cyan-300">EDUCA</span>
                 </h1>
-                <span className="text-[11px] bg-white/20 text-white font-bold px-2 py-0.5 rounded">
-                  PNEPS / SUS
-                </span>
               </div>
               <p className="text-xs text-blue-100">
-                Sistema de Gestão & Monitoramento da Educação Permanente em Saúde • SMS Recife
+                Sistema de Gestão & Monitoramento da Educação Permanente em Saúde • SERMAC
               </p>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-semibold border border-white/25 backdrop-blur-xs">
-              <ShieldCheck className="w-4 h-4 text-cyan-300" />
-              <span>Acesso Institucional Seguro</span>
-            </span>
           </div>
 
         </div>

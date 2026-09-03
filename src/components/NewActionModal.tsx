@@ -185,8 +185,8 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
       return;
     }
 
-    if (methodology === 'Outro' && !customMethodology.trim()) {
-      alert('Por favor, descreva a metodologia no campo "Outro".');
+    if ((methodology === 'Outros' || methodology === 'Outro') && !customMethodology.trim()) {
+      alert('Por favor, descreva a metodologia no campo "Outros".');
       return;
     }
 
@@ -210,7 +210,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
         customTargetCategory: targetCategories.includes('Outro') ? customTargetCategory : undefined,
         modality,
         methodology,
-        customMethodology: methodology === 'Outro' ? customMethodology : undefined,
+        customMethodology: (methodology === 'Outros' || methodology === 'Outro') ? customMethodology : undefined,
         workloadHours: Number(workloadHours),
         dateStart,
         dateEnd: dateStart,
@@ -247,7 +247,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
       customTargetCategory: targetCategories.includes('Outro') ? customTargetCategory : undefined,
       modality,
       methodology,
-      customMethodology: methodology === 'Outro' ? customMethodology : undefined,
+      customMethodology: (methodology === 'Outros' || methodology === 'Outro') ? customMethodology : undefined,
       workloadHours: Number(workloadHours),
       dateStart,
       dateEnd: dateStart,
@@ -598,18 +598,18 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
                 />
               </div>
 
-              {/* Custom methodology description when 'Outro' is selected */}
-              {methodology === 'Outro' && (
+              {/* Custom methodology description when 'Outros' is selected */}
+              {(methodology === 'Outros' || methodology === 'Outro') && (
                 <div className="col-span-full p-3 bg-blue-50 border border-blue-300 rounded-xl space-y-1.5 animate-fadeIn">
                   <label className="block text-blue-950 font-bold text-xs">
-                    Descreva a metodologia utilizada: <span className="text-rose-500">*</span>
+                    Descreva a metodologia utilizada (Outros): <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={customMethodology}
                     onChange={(e) => setCustomMethodology(e.target.value)}
-                    placeholder="Ex: Painel integrado com dinâmicas corporais, teatro do oprimido e pactuação de rotinas..."
+                    placeholder="Ex: Painel integrado com dinâmicas corporais, teatro do oprimido, tutoria clínica..."
                     className="w-full bg-white border border-blue-300 rounded-lg p-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                   <p className="text-[11px] text-blue-800">

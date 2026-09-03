@@ -105,15 +105,15 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
   const records = attendanceRecords.length > 0 ? attendanceRecords : attendanceList;
   const currentActionRecords = (records || []).filter(r => r && r.actionId === action.id);
   const presentCount = currentActionRecords.filter(r => r && r.status === 'presente').length;
-  const feedbackRecords = currentActionRecords.filter(r => r && r.feedback);
+  const feedbackRecords = currentActionRecords.filter(r => r && r.feedback && r.feedback.satisfactionRating);
 
   const avgSatisfaction = feedbackRecords.length > 0
     ? (feedbackRecords.reduce((acc, r) => acc + (r.feedback?.satisfactionRating || 0), 0) / feedbackRecords.length).toFixed(1)
-    : '5.0';
+    : '0.0';
 
   const avgApplicability = feedbackRecords.length > 0
     ? (feedbackRecords.reduce((acc, r) => acc + (r.feedback?.applicabilityRating || 0), 0) / feedbackRecords.length).toFixed(1)
-    : '5.0';
+    : '0.0';
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,14 +138,7 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
         date: action.dateStart,
         checkinTimestamp: new Date().toISOString(),
         status: 'presente',
-        certificateIssued: true,
-        feedback: {
-          satisfactionRating: 5,
-          applicabilityRating: 5,
-          instructorRating: 5,
-          contentClarityRating: 5,
-          comment: 'Presença confirmada pela coordenação do NEPS.'
-        }
+        certificateIssued: true
       });
     }
 
@@ -469,8 +462,8 @@ export const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
                   </h4>
                   <div className="bg-teal-50 border border-teal-200 p-3 rounded-lg text-xs font-medium text-teal-900">
                     <strong className="block text-teal-950 font-bold mb-1">
-                      {action.methodology === 'Outro' && action.customMethodology 
-                        ? `Outro: ${action.customMethodology}` 
+                      {(action.methodology === 'Outros' || action.methodology === 'Outro') && action.customMethodology 
+                        ? `Outros: ${action.customMethodology}` 
                         : action.methodology}
                     </strong>
                     Prática pedagógica baseada em problematização dos processos de trabalho e dinâmicas do SUS.

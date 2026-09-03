@@ -288,15 +288,17 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
       checkinTimestamp: new Date().toISOString(),
       status: 'presente' as const,
       certificateIssued: true,
-      certificateCode: certCode,
-      feedback: {
-        satisfactionRating: 5,
-        applicabilityRating: 5,
-        instructorRating: 5,
-        contentClarityRating: 5,
-        comment: 'Presença confirmada pelo próprio profissional via PIN oficial do NEPS.'
-      }
+      certificateCode: certCode
     };
+
+    // Reset feedback form to clean initial states
+    setSatisfactionRating(5);
+    setInstructorRating(5);
+    setApplicabilityRating(5);
+    setContentClarityRating(5);
+    setComment('');
+    setSuggestions('');
+    setFeedbackSuccess(false);
 
     onRegisterCheckin(newRecordData);
     setActiveCheckinRecord(newRecordData);
@@ -321,13 +323,13 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
     e.preventDefault();
     if (!activeCheckinRecord) return;
 
-    const feedbackPayload = {
-      satisfactionRating,
-      applicabilityRating,
-      instructorRating,
-      contentClarityRating,
-      comment,
-      suggestions
+    const feedbackPayload: FeedbackData = {
+      satisfactionRating: Number(satisfactionRating),
+      applicabilityRating: Number(applicabilityRating),
+      instructorRating: Number(instructorRating),
+      contentClarityRating: Number(contentClarityRating),
+      comment: comment.trim() || undefined,
+      suggestions: suggestions.trim() || undefined
     };
 
     onSaveFeedback(activeCheckinRecord.id, feedbackPayload);
@@ -871,69 +873,144 @@ export const ParticipantPortal: React.FC<ParticipantPortalProps> = ({
                   </div>
 
                   {!feedbackSuccess ? (
-                    <form onSubmit={handleFeedbackSubmit} className="space-y-3">
-                      <div>
-                        <label className="block text-slate-700 font-semibold mb-1">
-                          1. Didática e Domínio do Docente
-                        </label>
-                        <div className="flex gap-1.5">
+                    <form onSubmit={handleFeedbackSubmit} className="space-y-3.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200">
+                      <div className="border-b border-slate-200/80 pb-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-slate-800 font-bold text-xs">
+                            1. Avaliação Geral do Treinamento (Satisfação)
+                          </label>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                            satisfactionRating >= 4 ? 'text-emerald-700 bg-emerald-50' : satisfactionRating === 3 ? 'text-amber-700 bg-amber-50' : 'text-rose-700 bg-rose-50'
+                          }`}>
+                            {satisfactionRating === 1 && '★ 1 - Muito Insatisfeito'}
+                            {satisfactionRating === 2 && '★ 2 - Insatisfeito'}
+                            {satisfactionRating === 3 && '★ 3 - Regular'}
+                            {satisfactionRating === 4 && '★ 4 - Satisfeito'}
+                            {satisfactionRating === 5 && '★ 5 - Excelente'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              type="button"
+                              key={star}
+                              onClick={() => setSatisfactionRating(star)}
+                              className={`flex-1 py-1.5 px-2 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                                satisfactionRating >= star
+                                  ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-xs'
+                                  : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>★</span>
+                              <span>{star}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="border-b border-slate-200/80 pb-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-slate-800 font-bold text-xs">
+                            2. Didática e Domínio do Facilitador / Docente
+                          </label>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {instructorRating} / 5
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1.5">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <button
                               type="button"
                               key={star}
                               onClick={() => setInstructorRating(star)}
-                              className={`px-2 py-1 rounded border text-xs font-bold transition ${
+                              className={`flex-1 py-1.5 px-2 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                                 instructorRating >= star
-                                  ? 'bg-amber-50 border-amber-300 text-amber-900'
-                                  : 'bg-slate-50 border-slate-200 text-slate-400'
+                                  ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-xs'
+                                  : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-100'
                               }`}
                             >
-                              ★ {star}
+                              <span>★</span>
+                              <span>{star}</span>
                             </button>
                           ))}
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-slate-700 font-semibold mb-1">
-                          2. Aplicabilidade Prática no SUS
-                        </label>
-                        <div className="flex gap-1.5">
+                      <div className="border-b border-slate-200/80 pb-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-slate-800 font-bold text-xs">
+                            3. Aplicabilidade Prática no Cotidiano SUS
+                          </label>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {applicabilityRating} / 5
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1.5">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <button
                               type="button"
                               key={star}
                               onClick={() => setApplicabilityRating(star)}
-                              className={`px-2 py-1 rounded border text-xs font-bold transition ${
+                              className={`flex-1 py-1.5 px-2 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                                 applicabilityRating >= star
-                                  ? 'bg-blue-50 border-blue-300 text-blue-900'
-                                  : 'bg-slate-50 border-slate-200 text-slate-400'
+                                  ? 'bg-blue-600 border-blue-700 text-white shadow-xs'
+                                  : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-100'
                               }`}
                             >
-                              ★ {star}
+                              <span>★</span>
+                              <span>{star}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="border-b border-slate-200/80 pb-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-slate-800 font-bold text-xs">
+                            4. Clareza do Conteúdo e Recursos
+                          </label>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {contentClarityRating} / 5
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              type="button"
+                              key={star}
+                              onClick={() => setContentClarityRating(star)}
+                              className={`flex-1 py-1.5 px-2 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                                contentClarityRating >= star
+                                  ? 'bg-purple-600 border-purple-700 text-white shadow-xs'
+                                  : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>★</span>
+                              <span>{star}</span>
                             </button>
                           ))}
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-slate-700 font-semibold mb-1">
-                          Comentários Construtivos
+                        <label className="block text-slate-700 font-semibold mb-1 text-xs">
+                          Comentários ou Sugestões
                         </label>
                         <textarea
                           rows={2}
                           value={comment}
                           onChange={(e) => setComment(e.target.value)}
-                          placeholder="O que achou do treinamento? O que pode melhorar?"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="O que achou do treinamento? Sugestões para próximas ações..."
+                          className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-xs"
+                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition shadow-xs flex items-center justify-center gap-2 cursor-pointer text-xs"
                       >
-                        Salvar Avaliação & Liberar Certificado
+                        <Star className="w-4 h-4 fill-amber-300 text-amber-300" />
+                        <span>Salvar Avaliação de Reação</span>
                       </button>
                     </form>
                   ) : (

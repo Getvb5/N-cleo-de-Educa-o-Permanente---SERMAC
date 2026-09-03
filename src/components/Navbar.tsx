@@ -18,7 +18,8 @@ import {
   Shield,
   Download,
   FileSpreadsheet,
-  Users
+  Users,
+  Cloud
 } from 'lucide-react';
 import { SermacEducaLogo } from './SermacEducaLogo';
 
@@ -377,6 +378,16 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Side: User Profile Badge with Logout */}
       <div className="flex items-center gap-2 sm:gap-3 text-xs shrink-0 ml-auto">
+
+        {/* Cloud Persistence Badge */}
+        <div 
+          className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[#1351B4] text-[11px] font-bold shadow-2xs"
+          title="Dados sincronizados e salvos oficialmente no Google Cloud Firestore em tempo real"
+        >
+          <Cloud className="w-3.5 h-3.5 text-[#1351B4]" />
+          <span>Nuvem Oficial (Firestore)</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        </div>
 
         {/* Single Unified User Identity & Session Box */}
         <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
