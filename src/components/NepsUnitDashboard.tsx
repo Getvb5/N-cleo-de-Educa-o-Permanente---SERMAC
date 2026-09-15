@@ -35,7 +35,13 @@ import {
   Ban,
   Pencil,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Link2,
+  Copy,
+  ExternalLink,
+  Check,
+  Share2,
+  X
 } from 'lucide-react';
 
 interface NepsUnitDashboardProps {
@@ -53,6 +59,7 @@ interface NepsUnitDashboardProps {
   onEditAction?: (action: TrainingAction) => void;
   onDeleteAction?: (actionId: string) => void;
   onOpenCnesModal?: (unitId?: string) => void;
+  onOpenIndicatorsStandalone?: (unitId: string) => void;
 }
 
 export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
@@ -69,12 +76,40 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
   onOpenCancelModal,
   onEditAction,
   onDeleteAction,
-  onOpenCnesModal
+  onOpenCnesModal,
+  onOpenIndicatorsStandalone
 }) => {
   const [activeTab, setActiveTab] = useState<'acoes' | 'indicadores' | 'frequencias' | 'solicitar_dnc'>('acoes');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'planejada' | 'em_andamento' | 'concluida' | 'cancelada'>('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [actionToDelete, setActionToDelete] = useState<TrainingAction | null>(null);
+  
+  // Link Generator & Modal States
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const getDirectFormUrl = () => {
+    if (typeof window === 'undefined') return '';
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    return `${origin}${pathname}?view=coleta-indicadores&unitId=${encodeURIComponent(unit.id)}`;
+  };
+
+  const handleCopyLink = () => {
+    const url = getDirectFormUrl();
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    });
+  };
+
+  const handleOpenDirectForm = () => {
+    if (onOpenIndicatorsStandalone) {
+      onOpenIndicatorsStandalone(unit.id);
+    } else {
+      window.open(getDirectFormUrl(), '_blank');
+    }
+  };
 
   // DNC Form States
   const [dncTheme, setDncTheme] = useState('');
@@ -305,11 +340,74 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
             <span>Submissão de LNT</span>
           </button>
         </div>
+
+        {/* Action Button: Link do Formulário de Coleta */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsLinkModalOpen(true)}
+            className="py-1.5 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0C326F] border border-blue-300 flex items-center gap-1.5 transition cursor-pointer font-bold shadow-2xs text-xs"
+            title="Gerar link exclusivo do formulário de coleta de indicadores"
+          >
+            <Link2 className="w-4 h-4 text-[#1351B4]" />
+            <span>Link Formulário de Coleta</span>
+          </button>
+        </div>
       </div>
 
       {/* TAB: INDICADORES E CENSO DE ATIVOS */}
       {activeTab === 'indicadores' && (
         <div className="space-y-4">
+
+          {/* BANNER EXCLUSIVO: LINK DO FORMULÁRIO DE COLETA DE INDICADORES */}
+          <div className="bg-linear-to-r from-[#0C326F] via-[#103E8A] to-[#1351B4] text-white p-4 sm:p-5 rounded-xl border border-blue-900 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-white/20 text-blue-100 border border-white/25">
+                  Link Direto de Coleta
+                </span>
+                <span className="text-xs text-blue-200 font-semibold">
+                  {unit.name} ({unit.code || 'NEPS'})
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                Link do Formulário de Coleta de Indicadores
+              </h3>
+              <p className="text-xs text-blue-100 max-w-2xl leading-relaxed">
+                Link isolado com <strong>somente o formulário de coleta de indicadores e censo da unidade</strong>. Sem menus ou painéis administrativos, permitindo que a coordenação ou comissão de EPS preencha e transmita a apuração mensal com máxima rapidez.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="px-3.5 py-2 rounded-lg bg-white text-[#0C326F] hover:bg-blue-50 font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              >
+                {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-[#1351B4]" />}
+                <span>{copiedLink ? 'Link Copiado!' : 'Copiar Link'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenDirectForm}
+                className="px-3.5 py-2 rounded-lg bg-blue-900/80 hover:bg-blue-900 text-white font-bold text-xs flex items-center gap-1.5 border border-white/25 shadow-xs transition cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Abrir Formulário</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsLinkModalOpen(true)}
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 transition cursor-pointer"
+                title="Ver QR Code e opções completas de compartilhamento"
+              >
+                <QrCode className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
           <OfficialIndicatorsPanel
             units={[unit]}
             actions={actions}
@@ -717,7 +815,7 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => setActionToDelete(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
               >
                 Cancelar
               </button>
@@ -729,12 +827,113 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
                   }
                   setActionToDelete(null);
                 }}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1.5"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Confirmar Exclusão</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: LINK EXCLUSIVO DE COLETA DE INDICADORES */}
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-[#1351B4] flex items-center justify-center shrink-0">
+                  <Link2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    Link do Formulário de Coleta de Indicadores
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {unit.name} • CNES: {unit.cnes || '0000531'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLinkModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Explanation */}
+            <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 text-xs text-blue-950 space-y-1.5">
+              <p className="font-bold text-[#0C326F]">
+                Link de Preenchimento Rápido (Acesso Exclusivo ao Formulário):
+              </p>
+              <p className="text-blue-900 leading-relaxed">
+                Este link abre <strong>exclusivamente a página do formulário de coleta de indicadores e censo</strong> da unidade. Não exibe o painel administrativo, o que simplifica o compartilhamento com coordenadores, responsáveis técnicos ou membros do NEP.
+              </p>
+            </div>
+
+            {/* Link Input & Copy */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700">
+                URL Direta do Formulário:
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={getDirectFormUrl()}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs font-mono text-slate-800 focus:outline-none select-all"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="px-4 py-2.5 bg-[#1351B4] hover:bg-[#0C326F] text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  {copiedLink ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedLink ? 'Copiado!' : 'Copiar'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={handleOpenDirectForm}
+                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4 text-slate-600" />
+                <span>Abrir Formulário Agora</span>
+              </button>
+
+              <a
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                  `Olá! Segue o link oficial para preenchimento da Coleta Mensal de Indicadores de Educação Permanente da unidade ${unit.name} (SERMAC / SUS Recife):\n\n${getDirectFormUrl()}`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Compartilhar via WhatsApp</span>
+              </a>
+            </div>
+
+            {/* Close */}
+            <div className="flex items-center justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsLinkModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+
           </div>
         </div>
       )}

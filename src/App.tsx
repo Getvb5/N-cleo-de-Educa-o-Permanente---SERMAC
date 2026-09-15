@@ -54,6 +54,7 @@ import { PaepsPlanModal } from './components/PaepsPlanModal';
 import { WorkforceCensusModal } from './components/WorkforceCensusModal';
 import { CancelActionModal } from './components/CancelActionModal';
 import { CnesIntegrationModal } from './components/CnesIntegrationModal';
+import { IndicatorsCollectionForm } from './components/IndicatorsCollectionForm';
 import { AuthScreen } from './components/AuthScreen';
 import { signOutGoogle } from './lib/firebase';
 
@@ -63,6 +64,32 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(initialUser);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(initialUser !== null);
   const [currentRole, setCurrentRole] = useState<UserRole>(initialUser?.role || 'SERMAC_CENTRAL');
+
+  // Standalone Indicators Collection Form State
+  const [isStandaloneIndicatorsForm, setIsStandaloneIndicatorsForm] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('view') === 'coleta-indicadores' || params.get('form') === 'indicadores';
+  });
+
+  const [standaloneUnitId, setStandaloneUnitId] = useState<string | undefined>(() => {
+    if (typeof window === 'undefined') return undefined;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('unitId') || undefined;
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const isStandalone = params.get('view') === 'coleta-indicadores' || params.get('form') === 'indicadores';
+      setIsStandaloneIndicatorsForm(isStandalone);
+      if (params.get('unitId')) {
+        setStandaloneUnitId(params.get('unitId') || undefined);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   
   const [units, setUnits] = useState<HealthUnit[]>(() => getStoredHealthUnits());
   const [selectedUnitId, setSelectedUnitId] = useState<string>(() => initialUser?.unitId || units[0]?.id || 'unit-1');
@@ -104,6 +131,7 @@ export default function App() {
   const [selectedActionToCancel, setSelectedActionToCancel] = useState<TrainingAction | null>(null);
   const [isCnesModalOpen, setIsCnesModalOpen] = useState(false);
   const [cnesTargetUnitId, setCnesTargetUnitId] = useState<string | undefined>(undefined);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const initialCloudSyncDone = useRef(false);
 
@@ -541,8 +569,40 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  // UI State
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const handleOpenIndicatorsStandalone = (unitId: string) => {
+    setStandaloneUnitId(unitId);
+    setSelectedUnitId(unitId);
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'coleta-indicadores');
+    url.searchParams.set('unitId', unitId);
+    window.history.pushState({}, '', url.toString());
+    setIsStandaloneIndicatorsForm(true);
+  };
+
+  const handleExitStandaloneIndicators = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('view');
+    url.searchParams.delete('form');
+    url.searchParams.delete('unitId');
+    window.history.pushState({}, '', url.pathname);
+    setIsStandaloneIndicatorsForm(false);
+  };
+
+  // Dedicated Standalone View for Indicators Collection Form (Direct link without administrative bars)
+  if (isStandaloneIndicatorsForm) {
+    return (
+      <IndicatorsCollectionForm
+        units={units}
+        defaultUnitId={standaloneUnitId || selectedUnitId || (currentUser?.unitId)}
+        currentCensusList={censusList}
+        actions={actions}
+        attendance={attendance}
+        currentUser={currentUser}
+        onSaveCensus={handleSaveCensus}
+        onExitStandalone={handleExitStandaloneIndicators}
+      />
+    );
+  }
 
   // If not authenticated, render Login Screen
   if (!isLoggedIn) {
@@ -642,6 +702,7 @@ export default function App() {
                 setCnesTargetUnitId(unitId || currentUnit.id);
                 setIsCnesModalOpen(true);
               }}
+              onOpenIndicatorsStandalone={handleOpenIndicatorsStandalone}
             />
           )}
 
