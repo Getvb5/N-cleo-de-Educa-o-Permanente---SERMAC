@@ -58,6 +58,52 @@ import { IndicatorsCollectionForm } from './components/IndicatorsCollectionForm'
 import { AuthScreen } from './components/AuthScreen';
 import { signOutGoogle } from './lib/firebase';
 
+// Robust helper to parse if user opened the Public Indicators Collection Form via direct link or hash
+const parsePublicIndicatorsRequest = (): { isStandalone: boolean; unitId?: string } => {
+  if (typeof window === 'undefined') return { isStandalone: false };
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const hash = window.location.hash || '';
+  let hashParams = new URLSearchParams();
+  if (hash.includes('?')) {
+    hashParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
+  }
+
+  const view = (searchParams.get('view') || hashParams.get('view') || '').toLowerCase();
+  const form = (searchParams.get('form') || hashParams.get('form') || '').toLowerCase();
+  const coleta = (searchParams.get('coleta') || hashParams.get('coleta') || '').toLowerCase();
+  const indicadores = (searchParams.get('indicadores') || hashParams.get('indicadores') || '').toLowerCase();
+
+  const unitId = searchParams.get('unitId') || 
+                 searchParams.get('unit_id') || 
+                 searchParams.get('unit') || 
+                 searchParams.get('unidade') ||
+                 hashParams.get('unitId') ||
+                 hashParams.get('unit_id') ||
+                 hashParams.get('unit') ||
+                 hashParams.get('unidade') || 
+                 undefined;
+
+  const pathname = window.location.pathname.toLowerCase();
+
+  const isStandalone = 
+    view === 'coleta-indicadores' ||
+    view === 'indicadores' ||
+    view === 'coleta' ||
+    form === 'indicadores' ||
+    form === 'coleta' ||
+    coleta === 'true' ||
+    coleta === 'indicadores' ||
+    indicadores === 'true' ||
+    hash.includes('coleta-indicadores') ||
+    hash.includes('indicadores') ||
+    pathname.endsWith('/coleta-indicadores') ||
+    pathname.endsWith('/indicadores') ||
+    pathname.endsWith('/coleta');
+
+  return { isStandalone, unitId: unitId || undefined };
+};
+
 export default function App() {
   // Authentication & Role State
   const initialUser = loadStoredUser();
@@ -65,30 +111,29 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(initialUser !== null);
   const [currentRole, setCurrentRole] = useState<UserRole>(initialUser?.role || 'SERMAC_CENTRAL');
 
-  // Standalone Indicators Collection Form State
+  // Standalone Indicators Collection Form State (Publicly accessible without login)
   const [isStandaloneIndicatorsForm, setIsStandaloneIndicatorsForm] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.get('view') === 'coleta-indicadores' || params.get('form') === 'indicadores';
+    return parsePublicIndicatorsRequest().isStandalone;
   });
 
   const [standaloneUnitId, setStandaloneUnitId] = useState<string | undefined>(() => {
-    if (typeof window === 'undefined') return undefined;
-    const params = new URLSearchParams(window.location.search);
-    return params.get('unitId') || undefined;
+    return parsePublicIndicatorsRequest().unitId;
   });
 
   useEffect(() => {
-    const handlePopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      const isStandalone = params.get('view') === 'coleta-indicadores' || params.get('form') === 'indicadores';
-      setIsStandaloneIndicatorsForm(isStandalone);
-      if (params.get('unitId')) {
-        setStandaloneUnitId(params.get('unitId') || undefined);
+    const handleUrlChange = () => {
+      const parsed = parsePublicIndicatorsRequest();
+      setIsStandaloneIndicatorsForm(parsed.isStandalone);
+      if (parsed.unitId) {
+        setStandaloneUnitId(parsed.unitId);
       }
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
   }, []);
   
   const [units, setUnits] = useState<HealthUnit[]>(() => getStoredHealthUnits());
@@ -569,12 +614,17 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  const handleOpenIndicatorsStandalone = (unitId: string) => {
-    setStandaloneUnitId(unitId);
-    setSelectedUnitId(unitId);
+  const handleOpenIndicatorsStandalone = (unitId?: string) => {
+    const targetUnit = unitId || selectedUnitId || units[0]?.id;
+    if (targetUnit) {
+      setStandaloneUnitId(targetUnit);
+      setSelectedUnitId(targetUnit);
+    }
     const url = new URL(window.location.href);
     url.searchParams.set('view', 'coleta-indicadores');
-    url.searchParams.set('unitId', unitId);
+    if (targetUnit) {
+      url.searchParams.set('unitId', targetUnit);
+    }
     window.history.pushState({}, '', url.toString());
     setIsStandaloneIndicatorsForm(true);
   };
@@ -584,11 +634,39 @@ export default function App() {
     url.searchParams.delete('view');
     url.searchParams.delete('form');
     url.searchParams.delete('unitId');
+    url.searchParams.delete('unit_id');
+    url.searchParams.delete('coleta');
+    url.searchParams.delete('indicadores');
     window.history.pushState({}, '', url.pathname);
     setIsStandaloneIndicatorsForm(false);
   };
 
-  // Dedicated Standalone View for Indicators Collection Form (Direct link without administrative bars)
+  // Dedicated handler for the Public Indicators Collection Form (saves both updated Unit & Census to state and Cloud Firestore)
+  const handleSaveIndicatorsCollection = (updatedUnit: HealthUnit, newCensus: UnitStaffCensus) => {
+    // 1. Update unit in local state
+    setUnits(prev => prev.map(u => u.id === updatedUnit.id ? updatedUnit : u));
+
+    // 2. Update census record in local state
+    setCensusList(prev => {
+      const idx = prev.findIndex(c => c.unitId === newCensus.unitId);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = newCensus;
+        return next;
+      }
+      return [...prev, newCensus];
+    });
+
+    // 3. Persist both to Cloud Firestore in real time
+    saveHealthUnitToCloud(updatedUnit).catch(err => {
+      console.error('Error saving unit from public indicators form to Firestore:', err);
+    });
+    saveCensusRecordToCloud(newCensus).catch(err => {
+      console.error('Error saving census from public indicators form to Firestore:', err);
+    });
+  };
+
+  // Dedicated Standalone View for Indicators Collection Form (Direct public link without login or administrative bars)
   if (isStandaloneIndicatorsForm) {
     return (
       <IndicatorsCollectionForm
@@ -598,7 +676,7 @@ export default function App() {
         actions={actions}
         attendance={attendance}
         currentUser={currentUser}
-        onSaveCensus={handleSaveCensus}
+        onSaveCensus={handleSaveIndicatorsCollection}
         onExitStandalone={handleExitStandaloneIndicators}
       />
     );
@@ -606,7 +684,13 @@ export default function App() {
 
   // If not authenticated, render Login Screen
   if (!isLoggedIn) {
-    return <AuthScreen units={units} onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <AuthScreen 
+        units={units} 
+        onLoginSuccess={handleLoginSuccess} 
+        onOpenPublicIndicatorsForm={handleOpenIndicatorsStandalone}
+      />
+    );
   }
 
   return (

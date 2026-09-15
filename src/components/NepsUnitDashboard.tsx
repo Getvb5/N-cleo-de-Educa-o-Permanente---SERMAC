@@ -363,18 +363,18 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
           <div className="bg-linear-to-r from-[#0C326F] via-[#103E8A] to-[#1351B4] text-white p-4 sm:p-5 rounded-xl border border-blue-900 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-white/20 text-blue-100 border border-white/25">
-                  Link Direto de Coleta
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-500/30 text-emerald-200 border border-emerald-400/40">
+                  Acesso Público Aberto
                 </span>
                 <span className="text-xs text-blue-200 font-semibold">
                   {unit.name} ({unit.code || 'NEPS'})
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                Link do Formulário de Coleta de Indicadores
+                Link Público do Formulário de Coleta de Indicadores
               </h3>
               <p className="text-xs text-blue-100 max-w-2xl leading-relaxed">
-                Link isolado com <strong>somente o formulário de coleta de indicadores e censo da unidade</strong>. Sem menus ou painéis administrativos, permitindo que a coordenação ou comissão de EPS preencha e transmita a apuração mensal com máxima rapidez.
+                Qualquer pessoa com o link consegue acessar diretamente o formulário da unidade para preencher o censo de ativos e transmitir os indicadores mensais para a SERMAC, <strong>sem necessidade de login ou senha</strong>.
               </p>
             </div>
 
@@ -867,19 +867,20 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
             </div>
 
             {/* Explanation */}
-            <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 text-xs text-blue-950 space-y-1.5">
-              <p className="font-bold text-[#0C326F]">
-                Link de Preenchimento Rápido (Acesso Exclusivo ao Formulário):
-              </p>
-              <p className="text-blue-900 leading-relaxed">
-                Este link abre <strong>exclusivamente a página do formulário de coleta de indicadores e censo</strong> da unidade. Não exibe o painel administrativo, o que simplifica o compartilhamento com coordenadores, responsáveis técnicos ou membros do NEP.
+            <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-950 space-y-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-emerald-900">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                <span>Link de Acesso 100% Público (Não Exige Login nem Senha):</span>
+              </div>
+              <p className="text-emerald-900 leading-relaxed">
+                Este link abre diretamente o <strong>formulário de coleta de indicadores e censo</strong> da unidade. Qualquer pessoa com o link consegue acessar, preencher o quadro de pessoal e transmitir a apuração mensal para a SERMAC sem necessidade de login, cadastro ou senha.
               </p>
             </div>
 
             {/* Link Input & Copy */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700">
-                URL Direta do Formulário:
+                URL Pública Direta do Formulário:
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -907,12 +908,12 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
                 className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ExternalLink className="w-4 h-4 text-slate-600" />
-                <span>Abrir Formulário Agora</span>
+                <span>Abrir Formulário Público Agora</span>
               </button>
 
               <a
                 href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                  `Olá! Segue o link oficial para preenchimento da Coleta Mensal de Indicadores de Educação Permanente da unidade ${unit.name} (SERMAC / SUS Recife):\n\n${getDirectFormUrl()}`
+                  `Olá! Segue o link público para preenchimento da Coleta Mensal de Indicadores de Educação Permanente da unidade ${unit.name} (SERMAC / SUS Recife). Acesso aberto a todos os profissionais da unidade, sem necessidade de login ou senha:\n\n${getDirectFormUrl()}`
                 )}`}
                 target="_blank"
                 rel="noreferrer"

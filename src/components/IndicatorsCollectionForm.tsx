@@ -32,7 +32,8 @@ import {
   Award,
   Clock,
   Send,
-  HelpCircle
+  HelpCircle,
+  Link2
 } from 'lucide-react';
 
 interface IndicatorsCollectionFormProps {
@@ -311,6 +312,10 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
                   SUS • Recife
                 </span>
                 <span className="text-xs text-blue-200 font-semibold">SERMAC • Gestão da Educação na Saúde</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-200 bg-emerald-900/70 px-2 py-0.5 rounded border border-emerald-400/40 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-300" />
+                  Acesso Público Liberado
+                </span>
               </div>
               <h1 className="text-sm sm:text-base font-bold text-white tracking-tight">
                 Coleta Oficial de Indicadores de Educação Permanente (NEPS)
@@ -323,10 +328,10 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
               type="button"
               onClick={handleCopyDirectLink}
               className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-blue-100 text-xs font-bold border border-white/15 transition flex items-center gap-1.5 cursor-pointer"
-              title="Copiar Link deste formulário"
+              title="Copiar Link público deste formulário"
             >
               {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedLink ? 'Link Copiado!' : 'Copiar Link Direto'}</span>
+              <span>{copiedLink ? 'Link Copiado!' : 'Copiar Link Público'}</span>
             </button>
 
             {onExitStandalone && (
@@ -336,7 +341,7 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
                 className="px-3 py-1.5 rounded-lg bg-blue-800/80 hover:bg-blue-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-blue-600/40"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Voltar ao Sistema</span>
+                <span>{currentUser ? 'Voltar ao Painel' : 'Área Restrita (Login)'}</span>
               </button>
             )}
           </div>
@@ -447,7 +452,7 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
                   className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition flex items-center gap-2 cursor-pointer shadow-xs"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>Voltar ao Painel Geral</span>
+                  <span>{currentUser ? 'Voltar ao Painel Geral' : 'Área Restrita (Login)'}</span>
                 </button>
               )}
             </div>
@@ -456,6 +461,40 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
           /* MAIN FORM */
           <form onSubmit={handleSubmit} className="space-y-6">
             
+            {/* PUBLIC ACCESS BANNER */}
+            <div className="bg-linear-to-r from-blue-50 via-white to-blue-50 border-2 border-blue-200 rounded-xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-300 text-[#0C326F] flex items-center justify-center shrink-0">
+                  <Link2 className="w-5 h-5 text-[#1351B4]" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      Acesso Público Aberto
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500">
+                      Não requer login ou senha de acesso
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-[#0C326F]">
+                    Formulário Oficial de Coleta de Indicadores e Censo da Unidade
+                  </h3>
+                  <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
+                    Este formulário é de acesso público para coordenadores, membros do NEP ou responsáveis técnicos da unidade <strong>{activeUnit?.name}</strong>. Ao concluir, os dados e cálculos são transmitidos instantaneamente para a Gestão Central (SERMAC).
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCopyDirectLink}
+                className="px-3.5 py-2 rounded-lg bg-[#1351B4] hover:bg-[#0C326F] text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                {copiedLink ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedLink ? 'Link Copiado!' : 'Copiar Link Público'}</span>
+              </button>
+            </div>
+
             {/* UNIT IDENTIFICATION & CONTEXT HEADER */}
             <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-300 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
