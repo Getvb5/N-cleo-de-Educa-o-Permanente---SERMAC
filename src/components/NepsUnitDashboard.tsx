@@ -13,6 +13,7 @@ import {
   ALL_THEMATIC_AXES, 
   ALL_PROFESSIONAL_CATEGORIES 
 } from '../data/mockData';
+import { getPublicIndicatorsFormUrl } from '../utils/publicUrlHelper';
 import { 
   Building, 
   Plus, 
@@ -89,10 +90,7 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
 
   const getDirectFormUrl = () => {
-    if (typeof window === 'undefined') return '';
-    const origin = window.location.origin;
-    const pathname = window.location.pathname;
-    return `${origin}${pathname}?view=coleta-indicadores&unitId=${encodeURIComponent(unit.id)}`;
+    return getPublicIndicatorsFormUrl(unit.id);
   };
 
   const handleCopyLink = () => {

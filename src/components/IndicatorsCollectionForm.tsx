@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { ALL_PROFESSIONAL_CATEGORIES } from '../data/mockData';
 import { OFFICIAL_INDICATOR_METAS } from '../utils/indicatorCalculator';
+import { getPublicIndicatorsFormUrl } from '../utils/publicUrlHelper';
 import { 
   Building2, 
   Users, 
@@ -287,9 +288,7 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
   };
 
   const handleCopyDirectLink = () => {
-    const origin = window.location.origin;
-    const pathname = window.location.pathname;
-    const url = `${origin}${pathname}?view=coleta-indicadores&unitId=${activeUnit?.id || ''}`;
+    const url = getPublicIndicatorsFormUrl(activeUnit?.id);
     navigator.clipboard.writeText(url).then(() => {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 3000);
