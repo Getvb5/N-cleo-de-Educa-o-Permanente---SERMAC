@@ -782,6 +782,7 @@ export default function App() {
               onOpenCancelModal={(action) => setSelectedActionToCancel(action)}
               onEditAction={handleEditAction}
               onDeleteAction={handleDeleteAction}
+              onUpdateStatus={handleUpdateActionStatus}
               onOpenCnesModal={(unitId) => {
                 setCnesTargetUnitId(unitId || currentUnit.id);
                 setIsCnesModalOpen(true);

@@ -66,7 +66,11 @@ export function calculateSermacIndicators(
 
   // 2. INDICADOR 2: Taxa de Execução do Plano do Núcleo de Educação Permanente (TEP)
   // Fórmula: TEP = (Nº de atividades efetivamente realizadas ÷ Nº de atividades planejadas no período) × 100 (Meta: 100%)
-  const completedActions = filteredActions.filter(a => a.status === 'concluida');
+  const completedActions = filteredActions.filter(a => 
+    a.status === 'concluida' || 
+    (a.attendedCount && a.attendedCount > 0) || 
+    filteredAttendance.some(att => att.actionId === a.id && att.status === 'presente')
+  );
   const totalPlannedActions = filteredActions.length; // Total no plano (planejadas, em andamento, concluídas, canceladas)
   const rawTepRate = totalPlannedActions > 0 ? (completedActions.length / totalPlannedActions) * 100 : 0;
   const tepRate = Math.round(rawTepRate * 10) / 10;
@@ -178,13 +182,21 @@ export function calculateSermacIndicators(
 
   // 6. INDICADOR 6: Percentual de Treinamentos Vinculados à Escola de Saúde do Recife (ESR)
   // Fórmula: (Nº de treinamentos vinculados à ESR realizados no período ÷ Nº total de treinamentos realizados pelo NEP) × 100 (Meta: A definir)
-  const esrLinkedActions = completedActions.filter(a => a.isEsrLinked);
-  const esrRate = completedActions.length > 0 
-    ? Math.round((esrLinkedActions.length / completedActions.length) * 1000) / 10 
-    : 0;
+  const allValidActions = filteredActions.filter(a => a.status !== 'cancelada');
+  const esrAllActions = allValidActions.filter(a => Boolean(a.isEsrLinked));
+  const esrCompletedActions = completedActions.filter(a => Boolean(a.isEsrLinked));
+
+  // Taxa oficial: se houver ações concluídas/realizadas, calcula sobre o total de concluídas.
+  // Se ainda não houver concluídas no período, calcula sobre as ações ativas do plano para visualização imediata da parceria.
+  let esrRate = 0;
+  if (completedActions.length > 0) {
+    esrRate = Math.round((esrCompletedActions.length / completedActions.length) * 1000) / 10;
+  } else if (allValidActions.length > 0) {
+    esrRate = Math.round((esrAllActions.length / allValidActions.length) * 1000) / 10;
+  }
 
   const esrTypesMap: Record<string, number> = {};
-  esrLinkedActions.forEach(a => {
+  esrAllActions.forEach(a => {
     const type = a.esrLinkType || 'Parceria Pedagógica ESR';
     esrTypesMap[type] = (esrTypesMap[type] || 0) + 1;
   });
@@ -235,11 +247,14 @@ export function calculateSermacIndicators(
       reasonsBreakdown
     },
     vinculacaoESR: {
-      esrLinkedActions: esrLinkedActions.length,
+      esrLinkedActions: esrAllActions.length,
+      esrCompletedActions: esrCompletedActions.length,
       totalCompletedActions: completedActions.length,
+      totalPlannedActions: allValidActions.length,
       rate: esrRate,
       metaLabel: 'A definir',
-      byType: esrTypesBreakdown
+      byType: esrTypesBreakdown,
+      actionsList: esrAllActions
     }
   };
 }

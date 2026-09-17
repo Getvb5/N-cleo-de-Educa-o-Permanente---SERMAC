@@ -508,7 +508,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ units, onLoginSuccess, o
                   >
                     {units.map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.name} ({u.type}) — {u.district}
+                        {u.name} ({u.type})
                       </option>
                     ))}
                   </select>

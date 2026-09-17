@@ -79,6 +79,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
   const [location, setLocation] = useState(actionToEdit?.location || 'Auditório da Unidade');
   const [plannedAttendeesCount, setPlannedAttendeesCount] = useState(actionToEdit?.plannedAttendeesCount || 30);
   const [eligibleProfessionalsCount, setEligibleProfessionalsCount] = useState(actionToEdit?.eligibleProfessionalsCount || 35);
+  const [status, setStatus] = useState<TrainingAction['status']>(actionToEdit?.status || 'planejada');
   const [isEsrLinked, setIsEsrLinked] = useState(Boolean(actionToEdit?.isEsrLinked));
   const [esrLinkType, setEsrLinkType] = useState(actionToEdit?.esrLinkType || 'Parceria Pedagógica ESR');
 
@@ -217,6 +218,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
         timeSchedule,
         location,
         maxSeats: actionToEdit.maxSeats || 999,
+        status: status,
         plannedAttendeesCount: Number(plannedAttendeesCount) || actionToEdit.plannedAttendeesCount || 30,
         eligibleProfessionalsCount: Number(eligibleProfessionalsCount) || actionToEdit.eligibleProfessionalsCount || 35,
         isEsrLinked: Boolean(isEsrLinked),
@@ -254,7 +256,7 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
       timeSchedule,
       location,
       maxSeats: 999,
-      status: 'planejada',
+      status: status,
       checkinPin: randomPin,
       enrolledCount: 0,
       attendedCount: 0,
@@ -672,6 +674,27 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
               </div>
             </div>
 
+            {/* Action Status Field */}
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1 text-xs">
+                Status da Ação Formativa *
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as TrainingAction['status'])}
+                className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="planejada">Planejada (Programada para o período)</option>
+                <option value="em_andamento">Em Andamento (Em execução na unidade)</option>
+                <option value="concluida">Concluída (Realizada com êxito — contabiliza no TEP e Indicadores)</option>
+              </select>
+              <span className="text-[10px] text-slate-500 mt-1 block">
+                {status === 'concluida' 
+                  ? '✓ Ação contabilizada como efetivamente realizada nos cálculos oficiais do TEP e da Escola de Saúde.'
+                  : 'Ações planejadas ou em andamento podem ser concluídas a qualquer momento.'}
+              </span>
+            </div>
+
             <div>
               <label className="block text-slate-700 font-semibold mb-1 text-xs">
                 Profissionais Previstos para este Tema (Denominador Indicador 3)
@@ -688,39 +711,50 @@ export const NewActionModal: React.FC<NewActionModalProps> = ({
             </div>
 
             {/* ESR Checkbox */}
-            <div className="p-3 bg-white border border-slate-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <label className="flex items-center space-x-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isEsrLinked}
-                  onChange={(e) => setIsEsrLinked(e.target.checked)}
-                  className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
-                />
-                <div>
-                  <span className="text-xs font-bold text-slate-900 block">
-                    Vincular esta ação à Escola de Saúde do Recife (ESR)
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    Alimenta o Indicador 6 (Percentual de Treinamentos Vinculados à ESR)
-                  </span>
-                </div>
-              </label>
+            <div className={`p-3.5 rounded-lg border transition-all ${
+              isEsrLinked 
+                ? 'bg-purple-50/80 border-purple-300 ring-1 ring-purple-200' 
+                : 'bg-white border-slate-200'
+            }`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <label className="flex items-center space-x-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isEsrLinked}
+                    onChange={(e) => setIsEsrLinked(e.target.checked)}
+                    className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      Vincular esta ação à Escola de Saúde do Recife (ESR)
+                      {isEsrLinked && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-200 text-purple-900 rounded-full">
+                          Indicador 6 Ativo
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[10px] text-slate-500 block mt-0.5">
+                      Contabiliza diretamente no <strong>Indicador 6</strong> (% de Treinamentos Vinculados à ESR).
+                    </span>
+                  </div>
+                </label>
 
-              {isEsrLinked && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-600 font-medium">Tipo:</span>
-                  <select
-                    value={esrLinkType}
-                    onChange={(e) => setEsrLinkType(e.target.value as any)}
-                    className="bg-slate-50 border border-purple-200 text-xs rounded-md px-2.5 py-1.5 text-purple-950 font-semibold focus:outline-none"
-                  >
-                    <option value="Parceria Pedagógica ESR">Parceria Pedagógica ESR</option>
-                    <option value="Certificação Oficial ESR">Certificação Oficial ESR</option>
-                    <option value="Instrutoria Conjunta">Instrutoria Conjunta</option>
-                    <option value="Programa Estratégico ESR">Programa Estratégico ESR</option>
-                  </select>
-                </div>
-              )}
+                {isEsrLinked && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-purple-900 font-bold">Tipo:</span>
+                    <select
+                      value={esrLinkType}
+                      onChange={(e) => setEsrLinkType(e.target.value as any)}
+                      className="bg-white border border-purple-300 text-xs rounded-lg px-2.5 py-1.5 text-purple-950 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="Parceria Pedagógica ESR">Parceria Pedagógica ESR</option>
+                      <option value="Certificação Oficial ESR">Certificação Oficial ESR</option>
+                      <option value="Instrutoria Conjunta">Instrutoria Conjunta</option>
+                      <option value="Programa Estratégico ESR">Programa Estratégico ESR</option>
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

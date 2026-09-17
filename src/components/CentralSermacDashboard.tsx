@@ -96,58 +96,29 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
 }) => {
   // Primary Navigation (Organized into 4 clear functional views)
   const [activeTab, setActiveTab] = useState<'indicadores' | 'unidades' | 'acoes' | 'dnc'>('indicadores');
-  
+
   // Sub-view inside Indicadores (Oficiais vs Panorama de Docência)
   const [indicadoresSubTab, setIndicadoresSubTab] = useState<'oficiais' | 'panorama'>('oficiais');
 
   // Global Filters
-  const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
   const [selectedUnitId, setSelectedUnitId] = useState<string>('all');
   const [selectedAxis, setSelectedAxis] = useState<string>('all');
   const [selectedModality, setSelectedModality] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Available unique districts
-  const districts = useMemo(() => {
-    const dSet = new Set<string>();
-    units.forEach(u => {
-      if (u.district) dSet.add(u.district);
-    });
-    return Array.from(dSet).sort();
-  }, [units]);
-
-  // Filtered units based on district selection
-  const unitsInDistrict = useMemo(() => {
-    if (selectedDistrict === 'all') return units;
-    return units.filter(u => u.district === selectedDistrict);
-  }, [units, selectedDistrict]);
-
-  // Reset selected unit if it does not belong to the selected district
-  const handleDistrictChange = (dist: string) => {
-    setSelectedDistrict(dist);
-    if (dist !== 'all' && selectedUnitId !== 'all') {
-      const unit = units.find(u => u.id === selectedUnitId);
-      if (unit && unit.district !== dist) {
-        setSelectedUnitId('all');
-      }
-    }
-  };
-
   // Check active filter count
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (selectedDistrict !== 'all') count++;
     if (selectedUnitId !== 'all') count++;
     if (selectedAxis !== 'all') count++;
     if (selectedModality !== 'all') count++;
     if (selectedStatus !== 'all') count++;
     if (searchTerm.trim() !== '') count++;
     return count;
-  }, [selectedDistrict, selectedUnitId, selectedAxis, selectedModality, selectedStatus, searchTerm]);
+  }, [selectedUnitId, selectedAxis, selectedModality, selectedStatus, searchTerm]);
 
   const handleResetFilters = () => {
-    setSelectedDistrict('all');
     setSelectedUnitId('all');
     setSelectedAxis('all');
     setSelectedModality('all');
@@ -158,28 +129,23 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
   // Filtered Actions based on global filters
   const filteredActions = useMemo(() => {
     return actions.filter(action => {
-      // 1. District filter
-      if (selectedDistrict !== 'all') {
-        const u = units.find(unit => unit.id === action.unitId);
-        if (!u || u.district !== selectedDistrict) return false;
-      }
-      // 2. Unit filter
+      // 1. Unit filter
       if (selectedUnitId !== 'all' && action.unitId !== selectedUnitId) {
         return false;
       }
-      // 3. Axis filter
+      // 2. Axis filter
       if (selectedAxis !== 'all' && action.thematicAxis !== selectedAxis) {
         return false;
       }
-      // 4. Modality filter
+      // 3. Modality filter
       if (selectedModality !== 'all' && action.modality !== selectedModality) {
         return false;
       }
-      // 5. Status filter
+      // 4. Status filter
       if (selectedStatus !== 'all' && action.status !== selectedStatus) {
         return false;
       }
-      // 6. Search term filter
+      // 5. Search term filter
       if (searchTerm.trim() !== '') {
         const query = searchTerm.toLowerCase();
         const matchesTitle = action.title.toLowerCase().includes(query);
@@ -190,7 +156,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
       }
       return true;
     });
-  }, [actions, units, selectedDistrict, selectedUnitId, selectedAxis, selectedModality, selectedStatus, searchTerm]);
+  }, [actions, selectedUnitId, selectedAxis, selectedModality, selectedStatus, searchTerm]);
 
   // Filtered Attendance Records based on filtered actions and units
   const filteredAttendance = useMemo(() => {
@@ -199,27 +165,20 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
       if (filteredActionIds.size > 0 && !filteredActionIds.has(att.actionId)) {
         return false;
       }
-      if (selectedDistrict !== 'all') {
-        const u = units.find(unit => unit.id === att.participantUnitId);
-        if (!u || u.district !== selectedDistrict) return false;
-      }
       if (selectedUnitId !== 'all' && att.participantUnitId !== selectedUnitId) {
         return false;
       }
       return true;
     });
-  }, [attendance, filteredActions, units, selectedDistrict, selectedUnitId]);
+  }, [attendance, filteredActions, selectedUnitId]);
 
   // Filtered Units for metrics
   const activeUnits = useMemo(() => {
     if (selectedUnitId !== 'all') {
       return units.filter(u => u.id === selectedUnitId);
     }
-    if (selectedDistrict !== 'all') {
-      return units.filter(u => u.district === selectedDistrict);
-    }
     return units;
-  }, [units, selectedDistrict, selectedUnitId]);
+  }, [units, selectedUnitId]);
 
   // Consolidated Key Indicators for the Executive Bar
   const metrics = useMemo(() => {
@@ -422,22 +381,9 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
       
       {/* 1. EXECUTIVE HEADER */}
       <div className="bg-white border border-slate-300 rounded-xl p-4 sm:p-5 shadow-xs">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="px-2.5 py-0.5 text-[11px] font-bold tracking-wider bg-[#EBF2FC] text-[#0C326F] border border-[#1351B4]/30 rounded uppercase">
-              SERMAC • Gestão Central
-            </span>
-            <span className="text-xs font-semibold text-slate-500">
-              Sistema de Monitoramento Municipal da Educação Permanente
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-[#0C326F] tracking-tight">
-            Painel Executivo de Educação Permanente em Saúde
-          </h1>
-          <p className="text-xs text-slate-600">
-            Acompanhamento consolidado das <strong>{units.length} Unidades de Saúde</strong> distribuídas nos <strong>8 Distritos Sanitários</strong> do Recife.
-          </p>
-        </div>
+        <h1 className="text-xl sm:text-2xl font-black text-[#0C326F] tracking-tight">
+          Painel Executivo de Educação Permanente em Saúde
+        </h1>
       </div>
 
       {/* 2. UNIFIED GLOBAL FILTER BAR */}
@@ -470,26 +416,9 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
         </div>
 
         {/* Controls Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           
-          {/* 1. Distrito Sanitário */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-              Distrito Sanitário:
-            </label>
-            <select
-              value={selectedDistrict}
-              onChange={(e) => handleDistrictChange(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:border-[#1351B4] focus:ring-1 focus:ring-[#1351B4]"
-            >
-              <option value="all">Todos os Distritos (8 DS)</option>
-              {districts.map(dist => (
-                <option key={dist} value={dist}>{dist}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 2. Unidade de Saúde */}
+          {/* 1. Unidade de Saúde */}
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1">
               Unidade de Saúde:
@@ -499,8 +428,8 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
               onChange={(e) => setSelectedUnitId(e.target.value)}
               className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:border-[#1351B4] focus:ring-1 focus:ring-[#1351B4]"
             >
-              <option value="all">Todas as Unidades ({unitsInDistrict.length})</option>
-              {unitsInDistrict.map(u => (
+              <option value="all">Todas as Unidades ({units.length})</option>
+              {units.map(u => (
                 <option key={u.id} value={u.id}>
                   {u.code} - {u.name}
                 </option>
@@ -508,7 +437,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
             </select>
           </div>
 
-          {/* 3. Eixo Temático */}
+          {/* 2. Eixo Temático */}
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1">
               Eixo Temático:
@@ -532,7 +461,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
             </select>
           </div>
 
-          {/* 4. Modalidade */}
+          {/* 3. Modalidade */}
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1">
               Modalidade:
@@ -549,7 +478,7 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
             </select>
           </div>
 
-          {/* 5. Busca Textual Rápida */}
+          {/* 4. Busca Textual Rápida */}
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1">
               Busca Rápida:
@@ -640,7 +569,6 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
       {/* VIEW 1: INDICADORES & DESEMPENHO (UNIFIED VIEW) */}
       {activeTab === 'indicadores' && (
         <div className="space-y-5">
-          
           {/* Sub-selector between Official Indicators and Dissemination Analysis */}
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <div className="flex items-center gap-2">
@@ -692,7 +620,6 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
           {/* Sub-Tab 2: Panorama da Docência & Matriz Intersetorial */}
           {indicadoresSubTab === 'panorama' && (
             <div className="space-y-5">
-              
               {/* Top Row: Distribuição por Categoria & Temas */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 
@@ -1062,9 +989,17 @@ export const CentralSermacDashboard: React.FC<CentralSermacDashboardProps> = ({
                     {action.title}
                   </h4>
 
-                  <p className="text-[11px] text-[#1351B4] font-medium">
-                    {action.thematicAxis}
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="text-[11px] text-[#1351B4] font-medium">
+                      {action.thematicAxis}
+                    </p>
+                    {action.isEsrLinked && (
+                      <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-900 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                        ESR: {action.esrLinkType || 'Parceria Escola de Saúde'}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">

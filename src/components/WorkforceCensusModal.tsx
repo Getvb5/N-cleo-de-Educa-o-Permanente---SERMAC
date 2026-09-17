@@ -162,7 +162,7 @@ export const WorkforceCensusModal: React.FC<WorkforceCensusModalProps> = ({
               </div>
               <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5" />
-                {unit.name} ({unit.code}) • {unit.district}
+                {unit.name} ({unit.code})
               </p>
             </div>
           </div>

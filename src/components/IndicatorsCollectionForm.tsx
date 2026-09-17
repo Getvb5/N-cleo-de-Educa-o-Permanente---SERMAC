@@ -149,8 +149,14 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
   });
   const [cancellationReason, setCancellationReason] = useState<string>('Falta de Quórum por Escala de Plantão');
   const [esrLinkedCount, setEsrLinkedCount] = useState<number>(() => {
-    return unitActions.filter(a => a.isEsrLinked).length;
+    return unitActions.filter(a => Boolean(a.isEsrLinked)).length;
   });
+
+  // Keep esrLinkedCount updated if unitActions changes
+  useEffect(() => {
+    const linked = unitActions.filter(a => Boolean(a.isEsrLinked)).length;
+    setEsrLinkedCount(linked);
+  }, [unitActions]);
 
   // Source and notes
   const [dataSource, setDataSource] = useState<string>('Integração CNES / DATASUS e Escala Oficial do Mês');
@@ -204,6 +210,12 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
     if (plannedActionsCount <= 0) return 0;
     return Math.round((cancelledCount / plannedActionsCount) * 1000) / 10;
   }, [cancelledCount, plannedActionsCount]);
+
+  const calculatedEsrRate = useMemo(() => {
+    const denominator = executedActionsCount > 0 ? executedActionsCount : plannedActionsCount;
+    if (denominator <= 0) return 0;
+    return Math.min(100, Math.round((esrLinkedCount / denominator) * 1000) / 10);
+  }, [esrLinkedCount, executedActionsCount, plannedActionsCount]);
 
   const handleCategoryChange = (category: ProfessionalCategory, value: string) => {
     const num = parseInt(value, 10);
@@ -267,7 +279,7 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
       period: period,
       totalActiveStaff: totalCalculatedStaff > 0 ? totalCalculatedStaff : (activeUnit.totalStaff || 1),
       breakdown: breakdown,
-      notes: `${notes} [Protocolo: ${protocol} | Responsável: ${submitterName} (${submitterEmail})]`,
+      notes: `${notes} [Protocolo: ${protocol} | Responsável: ${submitterName} (${submitterEmail}) | Indicador 6 (ESR): ${esrLinkedCount} ações vinculadas (${calculatedEsrRate}%)]`,
       submittedBy: submitterName,
       submittedAt: nowIso,
       verifiedBySermac: true
@@ -869,7 +881,7 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 {/* 1. Atividade */}
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -970,6 +982,28 @@ export const IndicatorsCollectionForm: React.FC<IndicatorsCollectionFormProps> =
                     <div 
                       className={`h-full rounded-full ${calculatedCancelRate <= 10 ? 'bg-emerald-600' : 'bg-rose-600'}`}
                       style={{ width: `${Math.min(100, calculatedCancelRate)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* 5. Vinculação ESR (Indicador 6) */}
+                <div className="p-4 rounded-xl border border-purple-200 bg-purple-50/60 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-purple-900 uppercase">6. Vínculo ESR</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-purple-100 text-purple-900 border-purple-300">
+                      Parceria ESR
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black text-purple-950">
+                    {calculatedEsrRate}%
+                  </div>
+                  <div className="text-[10px] text-slate-600 font-medium">
+                    {esrLinkedCount} ESR ÷ {executedActionsCount > 0 ? `${executedActionsCount} executadas` : `${plannedActionsCount} no plano`}
+                  </div>
+                  <div className="w-full bg-purple-200 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full rounded-full bg-purple-600"
+                      style={{ width: `${Math.min(100, calculatedEsrRate)}%` }}
                     />
                   </div>
                 </div>

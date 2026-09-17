@@ -367,7 +367,11 @@ export const OfficialIndicatorsPanel: React.FC<OfficialIndicatorsPanelProps> = (
             </div>
             <div className="text-right text-[11px] text-slate-600">
               <p className="font-bold text-purple-800">{report.vinculacaoESR.esrLinkedActions} com selo ESR</p>
-              <p>{report.vinculacaoESR.totalCompletedActions} ações concluídas</p>
+              <p>
+                {report.vinculacaoESR.totalCompletedActions > 0 
+                  ? `${report.vinculacaoESR.esrCompletedActions} de ${report.vinculacaoESR.totalCompletedActions} concluídas`
+                  : `${report.vinculacaoESR.esrLinkedActions} de ${report.vinculacaoESR.totalPlannedActions} no plano`}
+              </p>
             </div>
           </div>
 
@@ -839,7 +843,7 @@ export const OfficialIndicatorsPanel: React.FC<OfficialIndicatorsPanelProps> = (
         {activeDetailTab === 6 && (
           <div className="space-y-6">
             <div className="p-4 bg-slate-50 border border-slate-300 border-l-4 border-l-purple-700 rounded-lg space-y-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base font-bold text-slate-900">
                   Indicador 6: Percentual de Treinamentos Vinculados à Escola de Saúde do Recife (ESR)
                 </h3>
@@ -851,45 +855,140 @@ export const OfficialIndicatorsPanel: React.FC<OfficialIndicatorsPanelProps> = (
                 <strong>Objetivo:</strong> Mensurar a proporção de treinamentos ofertados pelos NEPS vinculados à SERMAC realizados em parceria ou vinculados à Escola de Saúde do Recife (ESR).
               </p>
               <div className="text-xs font-mono font-semibold text-purple-900 pt-1">
-                Fórmula: (Nº de treinamentos vinculados à ESR realizados ÷ Nº total de treinamentos realizados) × 100
+                Fórmula Oficial: (Nº de treinamentos vinculados à ESR realizados no período ÷ Nº total de treinamentos realizados) × 100
               </div>
             </div>
 
+            {/* Quick Metrics Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Taxa de Vinculação</span>
+                <span className="text-2xl font-black text-purple-900">{report.vinculacaoESR.rate}%</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Calculada no período</span>
+              </div>
+              <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Ações com Selo ESR</span>
+                <span className="text-2xl font-black text-purple-900">{report.vinculacaoESR.esrLinkedActions}</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Cadastradas no NEP</span>
+              </div>
+              <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Concluídas com ESR</span>
+                <span className="text-2xl font-black text-emerald-700">{report.vinculacaoESR.esrCompletedActions}</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">de {report.vinculacaoESR.totalCompletedActions} concluídas</span>
+              </div>
+              <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Ações no Plano TEP</span>
+                <span className="text-2xl font-black text-slate-800">{report.vinculacaoESR.totalPlannedActions}</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Ativas no período</span>
+              </div>
+            </div>
+
+            {/* Breakdown by Link Type */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 bg-white border border-slate-300 rounded-lg space-y-3 shadow-2xs">
                 <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Tipos de Vínculo com a ESR
+                  Distribuição por Modalidade de Parceria ESR
                 </h4>
-                <div className="space-y-2">
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-800">Parceria Pedagógica ESR</span>
-                    <span className="text-xs font-bold text-purple-800">Ativo na Rede</span>
+                {report.vinculacaoESR.byType && report.vinculacaoESR.byType.length > 0 ? (
+                  <div className="space-y-2">
+                    {report.vinculacaoESR.byType.map((item, idx) => (
+                      <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-800">{item.type}</span>
+                        <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-900 border border-purple-200">
+                          {item.count} {item.count === 1 ? 'ação' : 'ações'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-800">Certificação Oficial ESR</span>
-                    <span className="text-xs font-bold text-purple-800">Homologado</span>
+                ) : (
+                  <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded text-center text-xs text-slate-500">
+                    Nenhuma ação vinculada à ESR categorizada no período.
                   </div>
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-800">Instrutoria e Tutoria Compartilhada</span>
-                    <span className="text-xs font-bold text-purple-800">Em Expansão</span>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="p-4 bg-purple-50 border border-purple-300 rounded-lg flex flex-col justify-between shadow-2xs">
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-purple-950 uppercase tracking-wider">
-                    Integração Ensino-Serviço ESR
+                    Integração Ensino-Serviço ESR & SERMAC
                   </h4>
                   <p className="text-xs text-purple-900 leading-relaxed font-medium">
-                    A articulação entre a SERMAC, os NEPS locais e a Escola de Saúde do Recife fortalece a qualificação continuada do SUS, unificando trilhas de aprendizagem e diretrizes pedagógicas em toda a média e alta complexidade.
+                    A articulação entre a SERMAC, os Núcleos de Educação Permanente locais e a Escola de Saúde do Recife fortalece a qualificação continuada do SUS Recife, unificando diretrizes pedagógicas e certificação técnica em toda a rede de média e alta complexidade.
                   </p>
                 </div>
                 <div className="pt-4 border-t border-purple-200 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700">Total com Vinculação ESR:</span>
-                  <span className="text-xl font-black text-purple-900">{report.vinculacaoESR.rate}%</span>
+                  <span className="text-xs font-semibold text-slate-700">Total de Ações com Selo ESR:</span>
+                  <span className="text-lg font-black text-purple-900">{report.vinculacaoESR.esrLinkedActions} ações ({report.vinculacaoESR.rate}%)</span>
                 </div>
               </div>
+            </div>
+
+            {/* List of ESR-Linked Actions */}
+            <div className="p-4 bg-white border border-slate-300 rounded-lg space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Ações de Educação Permanente Vinculadas à ESR ({report.vinculacaoESR.esrLinkedActions})
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Treinamentos que compõem o cálculo do Indicador 6 no período selecionado
+                  </p>
+                </div>
+              </div>
+
+              {report.vinculacaoESR.actionsList && report.vinculacaoESR.actionsList.length > 0 ? (
+                <div className="divide-y divide-slate-200 border border-slate-200 rounded-lg overflow-hidden">
+                  {report.vinculacaoESR.actionsList.map((action) => (
+                    <div key={action.id} className="p-3 bg-white hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-mono font-bold bg-purple-50 text-purple-900 border border-purple-200 px-1.5 py-0.5 rounded">
+                            {action.code}
+                          </span>
+                          <span className="text-xs font-bold text-slate-900">
+                            {action.title}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300">
+                            {action.esrLinkType || 'Parceria ESR'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
+                          <span>Unidade: <strong>{action.unitName}</strong></span>
+                          <span>Eixo: <strong>{action.thematicAxis}</strong></span>
+                          <span>Data: <strong>{action.dateStart}</strong></span>
+                          <span>Carga: <strong>{action.workloadHours}h</strong></span>
+                          {action.attendedCount !== undefined && action.attendedCount > 0 && (
+                            <span className="text-emerald-700 font-semibold">Participantes: {action.attendedCount}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded border uppercase ${
+                          action.status === 'concluida' 
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                            : action.status === 'em_andamento'
+                            ? 'bg-blue-50 text-[#1351B4] border-blue-300'
+                            : action.status === 'cancelada'
+                            ? 'bg-rose-50 text-rose-800 border-rose-300'
+                            : 'bg-amber-50 text-amber-800 border-amber-300'
+                        }`}>
+                          {action.status === 'concluida' ? 'Concluída' : action.status === 'em_andamento' ? 'Em Andamento' : action.status === 'cancelada' ? 'Cancelada' : 'Planejada'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-center space-y-2">
+                  <p className="text-xs font-semibold text-slate-700">
+                    Nenhuma ação com vínculo à ESR cadastrada no período para a unidade selecionada.
+                  </p>
+                  <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                    Ao criar ou editar uma Ação de Educação Permanente (botão "+ Nova Ação de EPS"), marque a opção <strong>"Vincular esta ação à Escola de Saúde do Recife (ESR)"</strong> para que ela seja automaticamente contabilizada aqui.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

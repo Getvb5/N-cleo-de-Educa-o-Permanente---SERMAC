@@ -275,13 +275,16 @@ export interface SermacIndicatorReport {
   // 6. Percentual de Treinamentos Vinculados à ESR (Meta: A definir)
   vinculacaoESR: {
     esrLinkedActions: number;
+    esrCompletedActions: number;
     totalCompletedActions: number;
+    totalPlannedActions: number;
     rate: number; // %
     metaLabel: string; // 'A definir'
     byType: Array<{
       type: string;
       count: number;
     }>;
+    actionsList?: TrainingAction[];
   };
 }
 

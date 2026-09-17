@@ -59,6 +59,7 @@ interface NepsUnitDashboardProps {
   onOpenCancelModal?: (action: TrainingAction) => void;
   onEditAction?: (action: TrainingAction) => void;
   onDeleteAction?: (actionId: string) => void;
+  onUpdateStatus?: (actionId: string, newStatus: TrainingAction['status']) => void;
   onOpenCnesModal?: (unitId?: string) => void;
   onOpenIndicatorsStandalone?: (unitId: string) => void;
 }
@@ -77,6 +78,7 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
   onOpenCancelModal,
   onEditAction,
   onDeleteAction,
+  onUpdateStatus,
   onOpenCnesModal,
   onOpenIndicatorsStandalone
 }) => {
@@ -489,6 +491,19 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
 
                       {/* Quick Action Buttons */}
                       <div className="flex items-center gap-1 ml-1" onClick={(e) => e.stopPropagation()}>
+                        {onUpdateStatus && action.status !== 'concluida' && action.status !== 'cancelada' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateStatus(action.id, 'concluida');
+                            }}
+                            className="p-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 transition"
+                            title="Marcar como Concluída / Realizada (Contabiliza no TEP e Indicador 6)"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          </button>
+                        )}
                         {onOpenCancelModal && action.status !== 'cancelada' && action.status !== 'concluida' && (
                           <button
                             type="button"
@@ -536,9 +551,17 @@ export const NepsUnitDashboard: React.FC<NepsUnitDashboardProps> = ({
                     <h3 className="font-bold text-xs text-slate-900 leading-snug">
                       {action.title}
                     </h3>
-                    <p className="text-[10px] text-blue-700 font-semibold mt-0.5">
-                      {action.thematicAxis}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                      <span className="text-[10px] text-blue-700 font-semibold">
+                        {action.thematicAxis}
+                      </span>
+                      {action.isEsrLinked && (
+                        <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-900 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                          ESR: {action.esrLinkType || 'Parceria Escola de Saúde'}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
